@@ -1,0 +1,50 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
+  <defs>
+    <linearGradient id="bgGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#1e293b" />
+      <stop offset="100%" stop-color="#0f172a" />
+    </linearGradient>
+    <linearGradient id="accentGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#38bdf8" />
+      <stop offset="50%" stop-color="#3b82f6" />
+      <stop offset="100%" stop-color="#6366f1" />
+    </linearGradient>
+    <linearGradient id="headerGrad" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#f43f5e" />
+      <stop offset="100%" stop-color="#fb7185" />
+    </linearGradient>
+    <filter id="shadow" x="-20%" y="-20%" width="140%" height="140%">
+      <feDropShadow dx="0" dy="12" stdDeviation="16" flood-color="#000" flood-opacity="0.35" />
+    </filter>
+  </defs>
+
+  <!-- Background Base (Full Bleed for Maskable Safe Zone) -->
+  <rect width="512" height="512" fill="url(#bgGrad)" />
+
+  <!-- App Card within 20% Safe Zone (307x307 inner region centered) -->
+  <g filter="url(#shadow)">
+    <!-- Main Calendar Body -->
+    <rect x="110" y="110" width="292" height="292" rx="54" fill="#ffffff" />
+    
+    <!-- Calendar Top Bar / Binder -->
+    <path d="M 110,164 C 110,134.1 134.1,110 164,110 L 348,110 C 377.9,110 402,134.1 402,164 L 402,185 L 110,185 Z" fill="url(#headerGrad)" />
+    
+    <!-- Binder Rings -->
+    <rect x="175" y="90" width="18" height="38" rx="9" fill="#e2e8f0" />
+    <rect x="319" y="90" width="18" height="38" rx="9" fill="#e2e8f0" />
+
+    <!-- Grid / Schedule Lines -->
+    <rect x="145" y="220" width="95" height="18" rx="9" fill="#e2e8f0" />
+    <rect x="255" y="220" width="112" height="18" rx="9" fill="#e2e8f0" />
+    
+    <!-- Active Hub Event Indicator (CalHub Accent) -->
+    <rect x="145" y="260" width="222" height="28" rx="14" fill="url(#accentGrad)" />
+    
+    <!-- Additional Day Indicator Lines -->
+    <rect x="145" y="310" width="140" height="18" rx="9" fill="#f1f5f9" />
+    <rect x="300" y="310" width="67" height="18" rx="9" fill="#f1f5f9" />
+    
+    <rect x="145" y="350" width="80" height="18" rx="9" fill="#f1f5f9" />
+    <circle cx="345" cy="359" r="10" fill="#38bdf8" />
+  </g>
+</svg>
