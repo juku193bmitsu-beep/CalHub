@@ -10,6 +10,7 @@ interface VerticalDayRowProps {
   events: CalendarEvent[];
   rowHeight: number;
   isToday: boolean;
+  hasArrowPassing?: boolean;
   onDateClick: (date: Date) => void;
   onEventClick: (event: CalendarEvent) => void;
 }
@@ -19,6 +20,7 @@ export const VerticalDayRow: React.FC<VerticalDayRowProps> = ({
   events,
   rowHeight,
   isToday,
+  hasArrowPassing = false,
   onDateClick,
   onEventClick,
 }) => {
@@ -119,11 +121,10 @@ export const VerticalDayRow: React.FC<VerticalDayRowProps> = ({
         <span className={`text-[11px] ${badgeClass}`}>{weekdayStr}</span>
       </div>
 
-      {/* Dedicated Multi-Day Arrow Lane (Middle Column) */}
-      <div className="w-[22px] shrink-0 pointer-events-none" />
-
-      {/* Events Lane (Right Column) */}
-      <div className="flex-1 flex items-center gap-1.5 overflow-hidden min-w-0">
+      {/* Events Lane: offset when an arrow passes through on days 2..end, flush with arrow origin on day 1 */}
+      <div className={`flex-1 flex items-center gap-1.5 overflow-hidden min-w-0 transition-all ${
+        hasArrowPassing ? 'pl-4' : 'pl-0.5'
+      }`}>
         {visibleChips.slice(0, 3).map((event) => (
           <EventChip
             key={event.id}

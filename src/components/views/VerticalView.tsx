@@ -115,6 +115,14 @@ export const VerticalView: React.FC<VerticalViewProps> = ({
             return dateStr >= (startStr || '') && dateStr <= (endStr || '');
           });
 
+          // Check if a multi-day arrow is passing through this day (strictly day 2 to end)
+          const hasArrowPassing = filteredEvents.some((e) => {
+            const startStr = e.start.date || e.start.dateTime?.slice(0, 10);
+            const endStr = e.end.date || e.end.dateTime?.slice(0, 10);
+            if (!startStr || !endStr || startStr === endStr) return false;
+            return dateStr > startStr && dateStr <= endStr;
+          });
+
           return (
             <VerticalDayRow
               key={dateStr}
@@ -122,6 +130,7 @@ export const VerticalView: React.FC<VerticalViewProps> = ({
               events={dayEvents}
               rowHeight={effectiveRowHeight}
               isToday={isToday}
+              hasArrowPassing={hasArrowPassing}
               onDateClick={onDateClick}
               onEventClick={onEventClick}
             />

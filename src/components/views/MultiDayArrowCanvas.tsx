@@ -77,7 +77,7 @@ export const MultiDayArrowCanvas: React.FC<MultiDayArrowCanvasProps> = ({
   });
 
   const laneWidth = 8;
-  const laneBaseOffset = 77; // Centered inside the dedicated arrow lane (between date column and event chips)
+  const laneBaseOffset = 70; // Perfectly aligned with the left accent border of the first-day event pill
 
   // Arrow style mappings
   const strokeWidth =
