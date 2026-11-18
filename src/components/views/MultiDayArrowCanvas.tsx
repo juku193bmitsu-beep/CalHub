@@ -76,8 +76,8 @@ export const MultiDayArrowCanvas: React.FC<MultiDayArrowCanvasProps> = ({
     spans.push({ event, startDay, endDay, lane });
   });
 
-  const laneWidth = 16;
-  const laneBaseOffset = 92; // Aligned directly under the event chip (after date column & indent)
+  const laneWidth = 8;
+  const laneBaseOffset = 77; // Centered inside the dedicated arrow lane (between date column and event chips)
 
   // Arrow style mappings
   const strokeWidth =

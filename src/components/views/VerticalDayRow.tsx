@@ -106,7 +106,7 @@ export const VerticalDayRow: React.FC<VerticalDayRowProps> = ({
       }`}
     >
       {/* Date Indicator (Left Column) */}
-      <div className="flex items-center gap-1.5 w-[68px] shrink-0 select-none">
+      <div className="flex items-center gap-1 w-[58px] shrink-0 select-none">
         <span
           className={`w-6 h-6 flex items-center justify-center rounded-full text-xs font-semibold tabular-nums ${
             isToday
@@ -117,15 +117,13 @@ export const VerticalDayRow: React.FC<VerticalDayRowProps> = ({
           {dayNum}
         </span>
         <span className={`text-[11px] ${badgeClass}`}>{weekdayStr}</span>
-        {holiday && (
-          <span className="hidden sm:inline text-[9px] text-rose-500 dark:text-rose-400 truncate max-w-[45px]">
-            {holiday}
-          </span>
-        )}
       </div>
 
+      {/* Dedicated Multi-Day Arrow Lane (Middle Column) */}
+      <div className="w-[22px] shrink-0 pointer-events-none" />
+
       {/* Events Lane (Right Column) */}
-      <div className="flex-1 flex items-center gap-1.5 overflow-hidden pl-1 min-w-0">
+      <div className="flex-1 flex items-center gap-1.5 overflow-hidden min-w-0">
         {visibleChips.slice(0, 3).map((event) => (
           <EventChip
             key={event.id}

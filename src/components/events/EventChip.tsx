@@ -73,13 +73,13 @@ export const EventChip: React.FC<EventChipProps> = ({
   const bgCol = event.backgroundColor || '#039be5';
 
   return (
-    <div className="relative inline-block max-w-full">
+    <div className="relative inline-block max-w-[125px] sm:max-w-[170px] shrink-0">
       <div
         {...longPressProps}
         style={{
           borderLeftColor: bgCol,
         }}
-        className={`no-select cursor-pointer transition-all active:scale-98 select-none rounded-md px-1.5 py-0.5 text-xs font-medium flex items-center gap-1.5 truncate shadow-xs border-l-[3px] bg-white/90 dark:bg-slate-800/90 text-slate-800 dark:text-slate-100 hover:bg-slate-50 dark:hover:bg-slate-700/80 border-t border-r border-b border-slate-200/50 dark:border-slate-700/50 ${
+        className={`no-select cursor-pointer transition-all active:scale-98 select-none rounded-md px-1.5 py-0.5 text-xs font-medium flex items-center gap-1.5 shadow-xs border-l-[3px] bg-white/90 dark:bg-slate-800/90 text-slate-800 dark:text-slate-100 hover:bg-slate-50 dark:hover:bg-slate-700/80 border-t border-r border-b border-slate-200/50 dark:border-slate-700/50 w-full overflow-hidden ${
           isCompact ? 'py-0 text-[10px]' : ''
         }`}
       >
