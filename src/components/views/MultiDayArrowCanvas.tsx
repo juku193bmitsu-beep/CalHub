@@ -76,8 +76,8 @@ export const MultiDayArrowCanvas: React.FC<MultiDayArrowCanvasProps> = ({
     spans.push({ event, startDay, endDay, lane });
   });
 
-  const laneWidth = 14;
-  const laneBaseOffset = 76; // Offset from left (date + weekday label width)
+  const laneWidth = 16;
+  const laneBaseOffset = 92; // Aligned directly under the event chip (after date column & indent)
 
   // Arrow style mappings
   const strokeWidth =
