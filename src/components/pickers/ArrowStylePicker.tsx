@@ -82,7 +82,6 @@ export const ArrowStylePicker: React.FC<ArrowStylePickerProps> = ({
               </linearGradient>
             </defs>
 
-            <circle cx="20" cy="40" r="5" fill="#3b82f6" />
             <line
               x1="20"
               y1="40"

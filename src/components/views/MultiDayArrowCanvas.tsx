@@ -127,7 +127,16 @@ export const MultiDayArrowCanvas: React.FC<MultiDayArrowCanvasProps> = ({
       </defs>
 
       {spans.map(({ event, startDay, endDay, lane }) => {
-        const topY = (startDay - 1) * rowHeight + rowHeight * 0.75;
+        const startStr = event.start.date || event.start.dateTime?.slice(0, 10) || '';
+        const isStartedInCurrentMonth = startStr >= monthStartStr;
+
+        // If event starts this month, arrow begins right under the first day's row (startDay * rowHeight)
+        // If continuing from previous month, it starts from top of month (0)
+        if (isStartedInCurrentMonth && endDay <= startDay) {
+          return null;
+        }
+
+        const topY = isStartedInCurrentMonth ? startDay * rowHeight : 0;
         const bottomY = (endDay - 1) * rowHeight + rowHeight * 0.55;
         const xPos = laneBaseOffset + lane * laneWidth;
         const color = event.backgroundColor || '#3b82f6';
@@ -143,10 +152,7 @@ export const MultiDayArrowCanvas: React.FC<MultiDayArrowCanvasProps> = ({
               onEventClick(event);
             }}
           >
-            {/* Start circle node */}
-            <circle cx={xPos} cy={topY} r={strokeWidth * 0.9 + 1} fill={color} />
-
-            {/* Vertical arrow line */}
+            {/* Vertical arrow line starting from below the event row */}
             <line
               x1={xPos}
               y1={topY}
