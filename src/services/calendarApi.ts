@@ -63,13 +63,13 @@ export class CalendarApiService {
     let allItems: any[] = [];
     let pageToken: string | undefined = undefined;
     let pageCount = 0;
-    const MAX_PAGES = 10; // Supports up to 25,000 events per calendar
+    const MAX_PAGES = 25; // Supports up to 6,250 events per chunk per calendar
 
     do {
       const params = new URLSearchParams({
         singleEvents: 'true',
         orderBy: 'startTime',
-        maxResults: '2500',
+        maxResults: '250',
       });
 
       if (timeMin) params.set('timeMin', timeMin);

@@ -17,13 +17,13 @@ import { YearMonthPickerModal } from './components/pickers/YearMonthPickerModal'
 import { CalendarViewType } from './types/view';
 import { CalendarEvent } from './types/calendar';
 import { formatLocalDate, parseLocalDate } from './services/dateUtils';
-import { Check } from 'lucide-react';
+import { Check, RefreshCw } from 'lucide-react';
 
 const STORAGE_KEY_VIEW = 'calhub_view_type_v1';
 
 export const CalHubApp: React.FC = () => {
   const { setAuthToken } = useCalendar();
-  const { addEvent } = useEvents();
+  const { addEvent, syncStatusMessage, isSyncingEvents } = useEvents();
   const { copiedEvent } = useClipboard();
 
   const [currentDate, setCurrentDate] = useState<Date>(new Date());
@@ -235,9 +235,23 @@ export const CalHubApp: React.FC = () => {
         onOpenYearMonthPicker={() => setIsYearMonthPickerOpen(true)}
       />
 
+      {/* Sync Status Toast / Indicator */}
+      {syncStatusMessage && (
+        <div className="fixed top-4 inset-x-0 z-50 flex justify-center pointer-events-none animate-in fade-in slide-in-from-top-2 duration-150">
+          <div className="bg-slate-900/95 text-white dark:bg-slate-800/95 px-4 py-2 rounded-2xl shadow-xl flex items-center gap-2.5 text-xs font-semibold backdrop-blur-md border border-slate-700/80 max-w-sm">
+            {isSyncingEvents ? (
+              <RefreshCw className="w-4 h-4 text-blue-400 animate-spin shrink-0" />
+            ) : (
+              <Check className="w-4 h-4 text-emerald-400 shrink-0" />
+            )}
+            <span className="truncate">{syncStatusMessage}</span>
+          </div>
+        </div>
+      )}
+
       {/* Paste Notification Toast */}
       {pasteToast && (
-        <div className="fixed top-20 inset-x-0 z-50 flex justify-center pointer-events-none animate-in fade-in slide-in-from-top-2 duration-150">
+        <div className="fixed top-16 inset-x-0 z-50 flex justify-center pointer-events-none animate-in fade-in slide-in-from-top-2 duration-150">
           <div className="bg-slate-900/90 text-white dark:bg-slate-800/95 px-4 py-2 rounded-2xl shadow-xl flex items-center gap-2 text-xs font-semibold backdrop-blur-md border border-slate-700/60">
             <Check className="w-4 h-4 text-emerald-400" />
             <span>{pasteToast}</span>

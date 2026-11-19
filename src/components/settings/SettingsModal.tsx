@@ -43,7 +43,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
     toggleTheme,
   } = useCalendar();
 
-  const { clearAllEvents, resetToMockEvents } = useEvents();
+  const { clearAllEvents, resetToMockEvents, refreshEvents } = useEvents();
 
   const [activeTab, setActiveTab] = useState<'calendars' | 'google' | 'arrows'>(initialTab);
   const [clientIdInput, setClientIdInput] = useState(googleAuth.getClientId());
@@ -319,14 +319,27 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                 </div>
 
                 {authToken ? (
-                  <button
-                    type="button"
-                    onClick={handleGoogleLogout}
-                    className="px-3 py-1.5 rounded-xl border border-rose-300 text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/40 text-xs font-semibold flex items-center gap-1 transition shrink-0"
-                  >
-                    <LogOut className="w-3.5 h-3.5" />
-                    <span>ログアウト</span>
-                  </button>
+                  <div className="flex items-center gap-2">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        refreshEvents();
+                        onClose();
+                      }}
+                      className="px-3 py-1.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold flex items-center gap-1.5 transition active:scale-95 shadow-xs shrink-0"
+                    >
+                      <RotateCcw className="w-3.5 h-3.5" />
+                      <span>過去10年分を再同期</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={handleGoogleLogout}
+                      className="px-2.5 py-1.5 rounded-xl border border-rose-300 text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/40 text-xs font-semibold flex items-center gap-1 transition shrink-0"
+                    >
+                      <LogOut className="w-3.5 h-3.5" />
+                      <span>ログアウト</span>
+                    </button>
+                  </div>
                 ) : (
                   <button
                     type="button"
