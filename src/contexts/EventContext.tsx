@@ -65,12 +65,20 @@ export const EventProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       const timeMin = new Date(now.getFullYear(), now.getMonth() - 2, 1).toISOString();
       const timeMax = new Date(now.getFullYear(), now.getMonth() + 4, 0).toISOString();
 
-      const promises = Array.from(visibleCalendarIds).map((calId) =>
-        CalendarApiService.listEvents(authToken, calId, timeMin, timeMax).catch((err) => {
+      const promises = Array.from(visibleCalendarIds).map((calId) => {
+        const cal = calendars.find((c) => c.id === calId);
+        return CalendarApiService.listEvents(
+          authToken,
+          calId,
+          timeMin,
+          timeMax,
+          undefined,
+          cal?.backgroundColor
+        ).catch((err) => {
           console.warn(`Failed to fetch events for calendar ${calId}:`, err);
           return [] as CalendarEvent[];
-        })
-      );
+        });
+      });
 
       const results = await Promise.all(promises);
       const fetchedEvents = results.flat();
@@ -87,7 +95,7 @@ export const EventProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     } finally {
       setIsSyncingEvents(false);
     }
-  }, [authToken, visibleCalendarIds]);
+  }, [authToken, visibleCalendarIds, calendars]);
 
   // Fetch when token or visible calendars change
   useEffect(() => {
@@ -96,10 +104,21 @@ export const EventProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     }
   }, [authToken, visibleCalendarIds, refreshEvents]);
 
-  // Filter events based on active calendar selections
+  // Filter events based on active calendar selections, and ensure calendar color is inherited
   const filteredEvents = useMemo(() => {
-    return events.filter((e) => visibleCalendarIds.has(e.calendarId));
-  }, [events, visibleCalendarIds]);
+    const calMap = new Map(calendars.map((c) => [c.id, c.backgroundColor]));
+    return events
+      .filter((e) => visibleCalendarIds.has(e.calendarId))
+      .map((e) => {
+        if (!e.backgroundColor && calMap.has(e.calendarId)) {
+          return {
+            ...e,
+            backgroundColor: calMap.get(e.calendarId),
+          };
+        }
+        return e;
+      });
+  }, [events, visibleCalendarIds, calendars]);
 
   // 1. Add Event
   const addEvent = async (newEventData: Omit<CalendarEvent, 'id'>): Promise<CalendarEvent> => {

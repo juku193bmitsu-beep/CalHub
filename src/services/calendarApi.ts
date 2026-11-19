@@ -56,7 +56,8 @@ export class CalendarApiService {
     calendarId: string,
     timeMin?: string,
     timeMax?: string,
-    query?: string
+    query?: string,
+    calendarColor?: string
   ): Promise<CalendarEvent[]> {
     const params = new URLSearchParams({
       singleEvents: 'true',
@@ -79,6 +80,8 @@ export class CalendarApiService {
     return items.map((item: any) => {
       const colorId = item.colorId;
       const palette = colorId ? GOOGLE_EVENT_COLORS[colorId] : undefined;
+      const bg = palette?.background || calendarColor || undefined;
+      const fg = palette?.foreground || (bg ? '#ffffff' : undefined);
 
       return {
         id: item.id,
@@ -97,8 +100,8 @@ export class CalendarApiService {
           timeZone: item.end?.timeZone,
         },
         colorId,
-        backgroundColor: palette?.background,
-        foregroundColor: palette?.foreground,
+        backgroundColor: bg,
+        foregroundColor: fg,
         isAllDay: !item.start?.dateTime && !!item.start?.date,
         status: item.status,
         recurringEventId: item.recurringEventId,

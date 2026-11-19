@@ -3,6 +3,7 @@ import { CalendarEvent } from '../../types/calendar';
 import { useLongPress } from '../../hooks/useLongPress';
 import { useClipboard } from '../../contexts/ClipboardContext';
 import { useEvents } from '../../contexts/EventContext';
+import { useCalendar } from '../../contexts/CalendarContext';
 import { Copy, Edit2, Trash2 } from 'lucide-react';
 
 interface EventChipProps {
@@ -38,6 +39,7 @@ export const EventChip: React.FC<EventChipProps> = ({
 }) => {
   const { copyEvent } = useClipboard();
   const { deleteEvent } = useEvents();
+  const { calendars } = useCalendar();
   const [showMenu, setShowMenu] = useState(false);
   const [menuPos, setMenuPos] = useState<{ x: number; y: number } | null>(null);
   const [isDragging, setIsDragging] = useState(false);
@@ -117,7 +119,8 @@ export const EventChip: React.FC<EventChipProps> = ({
         })
       : '';
 
-  const rawColor = event.backgroundColor || '#039be5';
+  const calendar = calendars.find((c) => c.id === event.calendarId);
+  const rawColor = event.backgroundColor || calendar?.backgroundColor || '#039be5';
   const bgColorLight = hexToRgba(rawColor, 0.12);
   const borderColorLight = hexToRgba(rawColor, 0.28);
 

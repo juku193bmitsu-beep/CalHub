@@ -1,28 +1,84 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { googleAuth } from '../../services/googleAuth';
-import { AlertCircle, RefreshCw, LogIn, CheckCircle2 } from 'lucide-react';
+import { AlertCircle, RefreshCw, LogIn, X } from 'lucide-react';
 
 interface AuthBarProps {
   onTokenChange: (token: string | null) => void;
 }
 
+const STORAGE_KEY_AUTH_TOKEN = 'calhub_google_auth_token_v1';
+const STORAGE_KEY_AUTH_EXPIRES = 'calhub_google_auth_expires_v1';
+const STORAGE_KEY_BAR_DISMISSED = 'calhub_auth_bar_dismissed_v1';
+
 export const AuthBar: React.FC<AuthBarProps> = ({ onTokenChange }) => {
   const isConfigured = googleAuth.isConfigured();
-  const [token, setToken] = useState<string | null>(null);
-  const [expiresAt, setExpiresAt] = useState<number | null>(null);
+
+  // Restore cached token if valid
+  const [token, setToken] = useState<string | null>(() => {
+    try {
+      const savedToken = localStorage.getItem(STORAGE_KEY_AUTH_TOKEN);
+      const savedExpires = localStorage.getItem(STORAGE_KEY_AUTH_EXPIRES);
+      if (savedToken && savedExpires && Number(savedExpires) > Date.now()) {
+        return savedToken;
+      }
+    } catch {
+      // fallback
+    }
+    return null;
+  });
+
+  const [expiresAt, setExpiresAt] = useState<number | null>(() => {
+    try {
+      const savedExpires = localStorage.getItem(STORAGE_KEY_AUTH_EXPIRES);
+      if (savedExpires) return Number(savedExpires);
+    } catch {
+      // fallback
+    }
+    return null;
+  });
+
+  const [isDismissed, setIsDismissed] = useState<boolean>(() => {
+    try {
+      return localStorage.getItem(STORAGE_KEY_BAR_DISMISSED) === 'true';
+    } catch {
+      return false;
+    }
+  });
+
   const [isExpiringSoon, setIsExpiringSoon] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+
+  // Notify parent on mount if restored token is valid
+  useEffect(() => {
+    if (token) {
+      onTokenChange(token);
+    }
+  }, []);
+
+  const saveToken = useCallback((newToken: string | null, newExpiresAt: number | null) => {
+    setToken(newToken);
+    setExpiresAt(newExpiresAt);
+    try {
+      if (newToken && newExpiresAt) {
+        localStorage.setItem(STORAGE_KEY_AUTH_TOKEN, newToken);
+        localStorage.setItem(STORAGE_KEY_AUTH_EXPIRES, String(newExpiresAt));
+      } else {
+        localStorage.removeItem(STORAGE_KEY_AUTH_TOKEN);
+        localStorage.removeItem(STORAGE_KEY_AUTH_EXPIRES);
+      }
+    } catch {
+      // ignore
+    }
+  }, []);
 
   // Initialize GIS on mount
   useEffect(() => {
     if (!isConfigured) return;
 
-    // Wait slightly for window.google to be ready if script is loading
     const timer = setTimeout(() => {
       googleAuth.init(
         (newToken, newExpiresAt) => {
-          setToken(newToken);
-          setExpiresAt(newExpiresAt);
+          saveToken(newToken, newExpiresAt);
           setIsExpiringSoon(false);
           setIsLoading(false);
           onTokenChange(newToken);
@@ -35,7 +91,7 @@ export const AuthBar: React.FC<AuthBarProps> = ({ onTokenChange }) => {
     }, 500);
 
     return () => clearTimeout(timer);
-  }, [isConfigured, onTokenChange]);
+  }, [isConfigured, onTokenChange, saveToken]);
 
   const handleSilentRefresh = useCallback(async () => {
     if (!isConfigured) return;
@@ -43,17 +99,16 @@ export const AuthBar: React.FC<AuthBarProps> = ({ onTokenChange }) => {
       setIsLoading(true);
       const newToken = await googleAuth.requestToken('none');
       const newExpiresAt = Date.now() + 3600 * 1000;
-      setToken(newToken);
-      setExpiresAt(newExpiresAt);
+      saveToken(newToken, newExpiresAt);
       setIsExpiringSoon(false);
       onTokenChange(newToken);
     } catch {
-      // If silent refresh fails (consent required), prompt user with bar
+      // If silent refresh fails, prompt user
       setIsExpiringSoon(true);
     } finally {
       setIsLoading(false);
     }
-  }, [isConfigured, onTokenChange]);
+  }, [isConfigured, onTokenChange, saveToken]);
 
   // Check token expiration periodically (every 1 min)
   useEffect(() => {
@@ -61,23 +116,28 @@ export const AuthBar: React.FC<AuthBarProps> = ({ onTokenChange }) => {
 
     const interval = setInterval(() => {
       const remainingMs = expiresAt - Date.now();
-      // If less than 5 minutes remaining, try silent refresh
-      if (remainingMs < 5 * 60 * 1000) {
+      if (remainingMs <= 0) {
+        saveToken(null, null);
+        onTokenChange(null);
+      } else if (remainingMs < 5 * 60 * 1000) {
         handleSilentRefresh();
       }
     }, 60 * 1000);
 
     return () => clearInterval(interval);
-  }, [token, expiresAt, handleSilentRefresh]);
+  }, [token, expiresAt, handleSilentRefresh, onTokenChange, saveToken]);
 
   const handleManualLogin = async () => {
     setIsLoading(true);
     try {
       const newToken = await googleAuth.requestToken();
       const newExpiresAt = Date.now() + 3600 * 1000;
-      setToken(newToken);
-      setExpiresAt(newExpiresAt);
+      saveToken(newToken, newExpiresAt);
       setIsExpiringSoon(false);
+      setIsDismissed(false);
+      try {
+        localStorage.removeItem(STORAGE_KEY_BAR_DISMISSED);
+      } catch {}
       onTokenChange(newToken);
     } catch (e) {
       console.error('Manual login failed', e);
@@ -86,36 +146,59 @@ export const AuthBar: React.FC<AuthBarProps> = ({ onTokenChange }) => {
     }
   };
 
-  // If client ID not configured, show subtle demo indicator
+  const handleDismiss = () => {
+    setIsDismissed(true);
+    try {
+      localStorage.setItem(STORAGE_KEY_BAR_DISMISSED, 'true');
+    } catch {}
+  };
+
+  // 1. If user is authenticated and token is active:
+  // As requested, hide the top bar completely to maximize vertical calendar space!
+  if (token && !isExpiringSoon) {
+    return null;
+  }
+
+  // 2. If client ID not configured:
   if (!isConfigured) {
+    if (isDismissed) return null;
     return (
       <div className="bg-amber-50 dark:bg-amber-950/40 border-b border-amber-200/60 dark:border-amber-900/40 px-3 py-1 flex items-center justify-between text-[11px] text-amber-800 dark:text-amber-300">
         <span className="flex items-center gap-1.5 truncate">
           <span className="w-1.5 h-1.5 rounded-full bg-amber-500 shrink-0" />
           デモモードで動作中（モックデータ・ローカル保存）
         </span>
-        <span className="text-[10px] text-amber-600 dark:text-amber-400 shrink-0">
-          .env で Client ID 設定可
-        </span>
+        <button
+          onClick={handleDismiss}
+          className="text-amber-600 hover:text-amber-800 p-0.5 rounded"
+          title="閉じる"
+        >
+          <X className="w-3.5 h-3.5" />
+        </button>
       </div>
     );
   }
 
-  // If token is expiring or expired, show one-tap reconnect bar
-  if (isExpiringSoon || !token) {
-    return (
-      <div className="bg-blue-50 dark:bg-blue-950/50 border-b border-blue-200 dark:border-blue-800 px-3 py-1.5 flex items-center justify-between text-xs text-blue-900 dark:text-blue-200 animate-in fade-in">
-        <div className="flex items-center gap-1.5 truncate">
-          <AlertCircle className="w-4 h-4 text-blue-600 dark:text-blue-400 shrink-0" />
-          <span className="font-medium truncate">
-            {token ? 'セッション期限切れが近づいています' : 'Googleカレンダーと連携できます'}
-          </span>
-        </div>
+  // 3. If dismissed by user, do not show
+  if (isDismissed && !isExpiringSoon) {
+    return null;
+  }
 
+  // 4. Prompt user with reconnect / login bar
+  return (
+    <div className="bg-blue-50 dark:bg-blue-950/50 border-b border-blue-200 dark:border-blue-800 px-3 py-1.5 flex items-center justify-between text-xs text-blue-900 dark:text-blue-200 animate-in fade-in">
+      <div className="flex items-center gap-1.5 truncate">
+        <AlertCircle className="w-4 h-4 text-blue-600 dark:text-blue-400 shrink-0" />
+        <span className="font-medium truncate">
+          {token ? 'セッション期限切れが近づいています' : 'Googleカレンダーと連携できます'}
+        </span>
+      </div>
+
+      <div className="flex items-center gap-2 shrink-0">
         <button
           onClick={handleManualLogin}
           disabled={isLoading}
-          className="px-3 py-1 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-semibold text-xs flex items-center gap-1.5 transition active:scale-95 shrink-0 shadow-xs"
+          className="px-3 py-1 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-semibold text-xs flex items-center gap-1.5 transition active:scale-95 shadow-xs"
         >
           {isLoading ? (
             <RefreshCw className="w-3.5 h-3.5 animate-spin" />
@@ -124,23 +207,14 @@ export const AuthBar: React.FC<AuthBarProps> = ({ onTokenChange }) => {
           )}
           <span>{token ? '再接続' : 'Google認証'}</span>
         </button>
+        <button
+          onClick={handleDismiss}
+          className="text-blue-400 hover:text-blue-600 p-0.5 rounded"
+          title="閉じる"
+        >
+          <X className="w-3.5 h-3.5" />
+        </button>
       </div>
-    );
-  }
-
-  // Connected state
-  return (
-    <div className="bg-emerald-50 dark:bg-emerald-950/30 border-b border-emerald-200/50 dark:border-emerald-900/40 px-3 py-0.5 flex items-center justify-between text-[11px] text-emerald-800 dark:text-emerald-300">
-      <span className="flex items-center gap-1.5">
-        <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400 shrink-0" />
-        Googleカレンダー同期中
-      </span>
-      <button
-        onClick={handleManualLogin}
-        className="text-[10px] text-emerald-700 dark:text-emerald-400 underline hover:text-emerald-900"
-      >
-        再接続
-      </button>
     </div>
   );
 };
