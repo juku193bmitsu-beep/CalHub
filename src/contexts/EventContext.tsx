@@ -35,6 +35,7 @@ interface EventContextType {
 const EventContext = createContext<EventContextType | null>(null);
 
 const STORAGE_KEY_EVENTS = 'calhub_events_v2';
+const STORAGE_KEY_HAS_SYNCED = 'calhub_has_synced_v1';
 
 export const EventProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const { visibleCalendarIds, authToken, calendars, setAuthToken } = useCalendar();
@@ -302,6 +303,9 @@ export const EventProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         await new Promise((r) => setTimeout(r, 100));
       }
 
+      try {
+        localStorage.setItem(STORAGE_KEY_HAS_SYNCED, 'true');
+      } catch {}
       setSyncStatusMessage(`同期完了: 過去10年〜未来3年（計 ${totalSyncedCount} 件）`);
       setTimeout(() => setSyncStatusMessage(null), 3500);
     } catch (err: any) {
@@ -319,13 +323,29 @@ export const EventProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     }
   }, [authToken, visibleCalendarIds, calendars, setAuthToken]);
 
-  // Fetch when token or visible calendars change
+  // Only trigger full 10-year sync on initial login when no cached data exists.
+  // When events are already cached in IndexedDB/localStorage, we avoid downloading 10 years
+  // every single time the app launches, loading instantly from cache instead!
   useEffect(() => {
-    if (authToken) {
-      fetchedMonthsRef.current.clear();
-      refreshEvents();
+    if (!authToken) return;
+
+    try {
+      const hasSyncedFlag = localStorage.getItem(STORAGE_KEY_HAS_SYNCED) === 'true';
+      if (hasSyncedFlag) return;
+    } catch {}
+
+    // Check if we already have non-mock events cached
+    const hasRealEvents = events.some((e) => !e.id.startsWith('mock-'));
+    if (hasRealEvents) {
+      try {
+        localStorage.setItem(STORAGE_KEY_HAS_SYNCED, 'true');
+      } catch {}
+      return;
     }
-  }, [authToken, visibleCalendarIds, refreshEvents]);
+
+    // Only run if truly a fresh connection with no cached events
+    refreshEvents();
+  }, [authToken, events, refreshEvents]);
 
   // Filter events based on active calendar selections, and ensure calendar color is inherited
   const filteredEvents = useMemo(() => {
@@ -504,7 +524,10 @@ export const EventProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   const clearAllEvents = () => {
     setEvents([]);
     clearEventsDb();
-    localStorage.removeItem(STORAGE_KEY_EVENTS);
+    try {
+      localStorage.removeItem(STORAGE_KEY_EVENTS);
+      localStorage.removeItem(STORAGE_KEY_HAS_SYNCED);
+    } catch {}
   };
 
   const resetToMockEvents = () => {
