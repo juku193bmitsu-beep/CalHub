@@ -1,4 +1,4 @@
-import React, { useRef, useEffect, useMemo } from 'react';
+import React, { useRef, useEffect, useMemo, useState } from 'react';
 import { useEvents } from '../../contexts/EventContext';
 import { CalendarEvent } from '../../types/calendar';
 import { getJapaneseHoliday } from '../../constants/holidays';
@@ -104,8 +104,23 @@ export const WeeklyTimeGridView: React.FC<WeeklyTimeGridViewProps> = ({
     });
   }, [days, singleDayTimedEvents, todayStr]);
 
-  // Current time marker position (if today is in this week)
-  const currentMinutesTotal = today.getHours() * 60 + today.getMinutes();
+  // Keep current time updated every minute
+  const [now, setNow] = useState<Date>(() => new Date());
+
+  useEffect(() => {
+    const timer = setInterval(() => {
+      setNow(new Date());
+    }, 60000);
+    return () => clearInterval(timer);
+  }, []);
+
+  const isCurrentWeek = useMemo(() => {
+    const todayFormatted = formatLocalDate(now);
+    return days.some((d) => formatLocalDate(d) === todayFormatted);
+  }, [days, now]);
+
+  // Current time marker position (continuous minutes precision)
+  const currentMinutesTotal = now.getHours() * 60 + now.getMinutes();
   const currentTimeTop = (currentMinutesTotal / 60) * HOUR_HEIGHT;
 
   const handleCellClick = (date: Date, hour: number) => {
@@ -322,6 +337,17 @@ export const WeeklyTimeGridView: React.FC<WeeklyTimeGridViewProps> = ({
               ))}
             </div>
 
+            {/* Current Time Indicator Red Line spanning across ALL 7 columns (Sunday through Saturday) */}
+            {isCurrentWeek && (
+              <div
+                style={{ top: `${currentTimeTop}px` }}
+                className="absolute inset-x-0 z-30 pointer-events-none flex items-center"
+              >
+                <span className="w-2.5 h-2.5 rounded-full bg-rose-500 -ml-1.5 shrink-0 shadow-xs ring-2 ring-white dark:ring-slate-900" />
+                <div className="h-[2px] bg-rose-500/95 flex-1 shadow-xs" />
+              </div>
+            )}
+
             {/* Day Columns */}
             {dayData.map(({ date, dateStr, timedEvents, isToday }, colIdx) => (
               <div
@@ -341,17 +367,6 @@ export const WeeklyTimeGridView: React.FC<WeeklyTimeGridViewProps> = ({
                     className="absolute inset-x-0 cursor-pointer hover:bg-blue-50/40 dark:hover:bg-slate-800/30 transition-colors"
                   />
                 ))}
-
-                {/* Current Time Indicator Red Line (for Today only) */}
-                {isToday && (
-                  <div
-                    style={{ top: `${currentTimeTop}px` }}
-                    className="absolute inset-x-0 z-30 pointer-events-none flex items-center"
-                  >
-                    <span className="w-2 h-2 rounded-full bg-rose-500 -ml-1 shrink-0 shadow-xs" />
-                    <div className="h-[2px] bg-rose-500 flex-1" />
-                  </div>
-                )}
 
                 {/* Timed Event Blocks */}
                 {timedEvents.map((ev) => {
