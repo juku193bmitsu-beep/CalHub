@@ -7,6 +7,12 @@ import { MultiDayArrowCanvas } from './MultiDayArrowCanvas';
 import { usePinchZoom } from '../../hooks/usePinchZoom';
 import { useSwipeNavigation } from '../../hooks/useSwipeNavigation';
 import { ZoomIn, ZoomOut, RotateCcw } from 'lucide-react';
+import {
+  formatLocalDate,
+  isEventOnDate,
+  getEventStartDateStr,
+  getEventEndDateInclusiveStr,
+} from '../../services/dateUtils';
 
 interface VerticalViewProps {
   currentDate: Date;
@@ -105,20 +111,15 @@ export const VerticalView: React.FC<VerticalViewProps> = ({
         {days.map((date) => {
           const dayNum = date.getDate();
           const isToday = isCurrentMonth && dayNum === todayDateNum;
-          const pad = (n: number) => n.toString().padStart(2, '0');
-          const dateStr = `${year}-${pad(month)}-${pad(dayNum)}`;
+          const dateStr = formatLocalDate(date);
 
           // Find events for this day
-          const dayEvents = filteredEvents.filter((e) => {
-            const startStr = e.start.date || e.start.dateTime?.slice(0, 10);
-            const endStr = e.end.date || e.end.dateTime?.slice(0, 10) || startStr;
-            return dateStr >= (startStr || '') && dateStr <= (endStr || '');
-          });
+          const dayEvents = filteredEvents.filter((e) => isEventOnDate(e, dateStr));
 
           // Check if a multi-day arrow is passing through this day (strictly day 2 to end)
           const hasArrowPassing = filteredEvents.some((e) => {
-            const startStr = e.start.date || e.start.dateTime?.slice(0, 10);
-            const endStr = e.end.date || e.end.dateTime?.slice(0, 10);
+            const startStr = getEventStartDateStr(e);
+            const endStr = getEventEndDateInclusiveStr(e);
             if (!startStr || !endStr || startStr === endStr) return false;
             return dateStr > startStr && dateStr <= endStr;
           });
@@ -131,6 +132,7 @@ export const VerticalView: React.FC<VerticalViewProps> = ({
               rowHeight={effectiveRowHeight}
               isToday={isToday}
               hasArrowPassing={hasArrowPassing}
+              isDraggable={true}
               onDateClick={onDateClick}
               onEventClick={onEventClick}
             />

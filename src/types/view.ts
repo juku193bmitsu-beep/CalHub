@@ -1,8 +1,8 @@
-export type CalendarViewType = 'vertical' | 'month' | 'week' | 'compare';
+export type CalendarViewType = 'vertical' | 'month' | 'timegrid' | 'week' | 'compare';
 
 export interface ViewState {
   currentDate: Date;
   viewType: CalendarViewType;
-  verticalZoom: number; // 1.0 (1画面フィット) ~ 3.0 (拡大縦スクロール)
+  verticalZoom: number;
   selectedDate: Date | null;
 }

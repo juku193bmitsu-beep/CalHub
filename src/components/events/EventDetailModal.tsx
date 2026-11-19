@@ -5,6 +5,7 @@ import { useCalendar } from '../../contexts/CalendarContext';
 import { parseLinksInText } from '../../services/urlParser';
 import { getJapaneseHoliday } from '../../constants/holidays';
 import { DrumTimePicker } from '../pickers/DrumTimePicker';
+import { formatLocalDate, isEventOnDate } from '../../services/dateUtils';
 import {
   X,
   ChevronLeft,
@@ -54,6 +55,18 @@ export const EventDetailModal: React.FC<EventDetailModalProps> = ({
   }, [initialDate]);
 
   useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        setIsCreatingNew(false);
+        setEditingEvent(null);
+        onClose();
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [onClose]);
+
+  useEffect(() => {
     if (targetEvent) {
       setEditingEvent(targetEvent);
       setIsCreatingNew(false);
@@ -96,7 +109,7 @@ export const EventDetailModal: React.FC<EventDetailModalProps> = ({
     setFormSummary('');
     setFormLocation('');
     setFormDescription('');
-    setFormCalendarId('primary');
+    setFormCalendarId(calendars[0]?.id || 'primary');
     setFormIsAllDay(false);
     setStartHour(10);
     setStartMinute(0);
@@ -113,23 +126,37 @@ export const EventDetailModal: React.FC<EventDetailModalProps> = ({
     setStartMinute(newM);
 
     const newEndTotal = newH * 60 + newM + validDuration;
-    const clampedEndH = Math.min(23, Math.floor(newEndTotal / 60));
-    const clampedEndM = newEndTotal % 60;
-    setEndHour(clampedEndH);
-    setEndMinute(clampedEndM);
+    if (newEndTotal >= 24 * 60) {
+      // Cap at 23:55
+      setEndHour(23);
+      setEndMinute(55);
+    } else {
+      setEndHour(Math.floor(newEndTotal / 60));
+      setEndMinute(newEndTotal % 60);
+    }
+  };
+
+  const handleEndTimeChange = (newH: number, newM: number) => {
+    const startTotal = startHour * 60 + startMinute;
+    const endTotal = newH * 60 + newM;
+
+    if (endTotal <= startTotal) {
+      // Must be at least 15 min after start
+      const adjusted = Math.min(23 * 60 + 55, startTotal + 15);
+      setEndHour(Math.floor(adjusted / 60));
+      setEndMinute(adjusted % 60);
+    } else {
+      setEndHour(newH);
+      setEndMinute(newM);
+    }
   };
 
   if (!isOpen) return null;
 
-  const pad = (n: number) => n.toString().padStart(2, '0');
-  const dateStr = `${currentDate.getFullYear()}-${pad(currentDate.getMonth() + 1)}-${pad(currentDate.getDate())}`;
+  const dateStr = formatLocalDate(currentDate);
 
-  // Events of current day
-  const dayEvents = filteredEvents.filter((ev) => {
-    const startStr = ev.start.date || ev.start.dateTime?.slice(0, 10);
-    const endStr = ev.end.date || ev.end.dateTime?.slice(0, 10) || startStr;
-    return dateStr >= (startStr || '') && dateStr <= (endStr || '');
-  });
+  // Events of current day using unified inclusive logic
+  const dayEvents = filteredEvents.filter((ev) => isEventOnDate(ev, dateStr));
 
   const holiday = getJapaneseHoliday(currentDate);
   const weekdayNames = ['日', '月', '火', '水', '木', '金', '土'];
@@ -156,8 +183,13 @@ export const EventDetailModal: React.FC<EventDetailModalProps> = ({
 
     let startObj, endObj;
     if (formIsAllDay) {
+      // For all-day event in Google Calendar API format
+      const [y, m, d] = dateStr.split('-').map(Number);
+      const nextDay = new Date(y, m - 1, d + 1);
+      const nextDayStr = formatLocalDate(nextDay);
+
       startObj = { date: dateStr };
-      endObj = { date: dateStr };
+      endObj = { date: nextDayStr }; // Exclusive end date for API compatibility
     } else {
       const sDate = new Date(currentDate);
       sDate.setHours(startHour, startMinute, 0, 0);
@@ -171,9 +203,9 @@ export const EventDetailModal: React.FC<EventDetailModalProps> = ({
     if (isCreatingNew) {
       addEvent({
         calendarId: formCalendarId,
-        summary: formSummary,
-        location: formLocation,
-        description: formDescription,
+        summary: formSummary.trim(),
+        location: formLocation.trim() || undefined,
+        description: formDescription.trim() || undefined,
         isAllDay: formIsAllDay,
         start: startObj,
         end: endObj,
@@ -182,9 +214,9 @@ export const EventDetailModal: React.FC<EventDetailModalProps> = ({
     } else if (editingEvent) {
       updateEvent(editingEvent.id, {
         calendarId: formCalendarId,
-        summary: formSummary,
-        location: formLocation,
-        description: formDescription,
+        summary: formSummary.trim(),
+        location: formLocation.trim() || undefined,
+        description: formDescription.trim() || undefined,
         isAllDay: formIsAllDay,
         start: startObj,
         end: endObj,
@@ -198,6 +230,8 @@ export const EventDetailModal: React.FC<EventDetailModalProps> = ({
 
   const handleDeleteCurrent = () => {
     if (editingEvent) {
+      const ok = window.confirm(`「${editingEvent.summary || 'この予定'}」を削除してもよろしいですか？`);
+      if (!ok) return;
       deleteEvent(editingEvent.id);
       setEditingEvent(null);
       setIsCreatingNew(false);
@@ -256,7 +290,11 @@ export const EventDetailModal: React.FC<EventDetailModalProps> = ({
               </button>
             )}
             <button
-              onClick={onClose}
+              onClick={() => {
+                setIsCreatingNew(false);
+                setEditingEvent(null);
+                onClose();
+              }}
               className="p-1.5 rounded-full text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-800"
             >
               <X className="w-5 h-5" />
@@ -276,6 +314,7 @@ export const EventDetailModal: React.FC<EventDetailModalProps> = ({
                 <input
                   type="text"
                   required
+                  autoFocus
                   placeholder="予定のタイトルを入力"
                   value={formSummary}
                   onChange={(e) => setFormSummary(e.target.value)}
@@ -337,10 +376,7 @@ export const EventDetailModal: React.FC<EventDetailModalProps> = ({
                     <DrumTimePicker
                       hour={endHour}
                       minute={endMinute}
-                      onChange={(h, m) => {
-                        setEndHour(h);
-                        setEndMinute(m);
-                      }}
+                      onChange={handleEndTimeChange}
                     />
                   </div>
                 </div>
@@ -410,8 +446,17 @@ export const EventDetailModal: React.FC<EventDetailModalProps> = ({
             /* Day Event List (View Mode) */
             <div className="space-y-3">
               {dayEvents.length === 0 ? (
-                <div className="text-center py-12 text-slate-400 dark:text-slate-500 text-xs">
-                  この日の予定はありません。「新規作成」から追加できます。
+                <div className="text-center py-12 flex flex-col items-center gap-3">
+                  <p className="text-slate-400 dark:text-slate-500 text-xs">
+                    この日の予定はありません。
+                  </p>
+                  <button
+                    onClick={handleStartNewForm}
+                    className="px-3.5 py-1.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold flex items-center gap-1.5 transition active:scale-95 shadow-xs"
+                  >
+                    <Plus className="w-3.5 h-3.5" />
+                    <span>予定を追加する</span>
+                  </button>
                 </div>
               ) : (
                 dayEvents.map((ev) => {
@@ -476,7 +521,7 @@ export const EventDetailModal: React.FC<EventDetailModalProps> = ({
                                   href={seg.url}
                                   target="_blank"
                                   rel="noopener noreferrer"
-                                  onClick={(e) => e.stopPropagation()} // Stop propagation to edit
+                                  onClick={(e) => e.stopPropagation()}
                                   className="text-blue-600 dark:text-blue-400 underline font-medium inline-flex items-center gap-0.5 hover:text-blue-800"
                                 >
                                   <span>{seg.content}</span>
@@ -502,7 +547,7 @@ export const EventDetailModal: React.FC<EventDetailModalProps> = ({
                                   href={seg.url}
                                   target="_blank"
                                   rel="noopener noreferrer"
-                                  onClick={(e) => e.stopPropagation()} // Stop propagation to edit
+                                  onClick={(e) => e.stopPropagation()}
                                   className="text-blue-600 dark:text-blue-400 underline font-medium inline-flex items-center gap-0.5 hover:text-blue-800"
                                 >
                                   <span>{seg.content}</span>

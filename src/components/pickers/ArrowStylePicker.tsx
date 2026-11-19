@@ -1,7 +1,7 @@
 import React from 'react';
 import { useCalendar } from '../../contexts/CalendarContext';
 import { ArrowThickness, ArrowPattern, ArrowHeadStyle } from '../../types/settings';
-import { X, Check } from 'lucide-react';
+import { X } from 'lucide-react';
 
 interface ArrowStylePickerProps {
   isOpen: boolean;
@@ -19,13 +19,12 @@ export const ArrowStylePicker: React.FC<ArrowStylePickerProps> = ({
   const thicknesses: { id: ArrowThickness; label: string; px: number }[] = [
     { id: 'thin', label: '細め (2px)', px: 2 },
     { id: 'normal', label: '標準 (3px)', px: 3 },
-    { id: 'thick', label: '太め (4.5px)', px: 4.5 },
+    { id: 'thick', label: '太め (4px)', px: 4 },
   ];
 
   const patterns: { id: ArrowPattern; label: string }[] = [
     { id: 'solid', label: '実線 (ソリッド)' },
     { id: 'dashed', label: '破線 (ダッシュ)' },
-    { id: 'gradient', label: 'グラデーション' },
   ];
 
   const heads: { id: ArrowHeadStyle; label: string }[] = [
@@ -61,25 +60,22 @@ export const ArrowStylePicker: React.FC<ArrowStylePickerProps> = ({
             <defs>
               <marker
                 id="preview-arrowhead"
-                markerWidth="8"
-                markerHeight="8"
-                refX="4"
-                refY="4"
+                markerWidth="3.8"
+                markerHeight="3.8"
+                viewBox="0 0 12 12"
+                refX="10.5"
+                refY="6"
                 orient="auto"
+                markerUnits="strokeWidth"
               >
                 {arrowSettings.headStyle === 'circle' ? (
-                  <circle cx="4" cy="4" r="3" fill="#3b82f6" />
+                  <circle cx="6" cy="6" r="4.5" fill="#3b82f6" />
                 ) : arrowSettings.headStyle === 'minimal' ? (
-                  <path d="M 1 1 L 4 4 L 1 7" fill="none" stroke="#3b82f6" strokeWidth="2" />
+                  <path d="M 2 1.5 L 10.5 6 L 2 10.5 L 4.5 6 Z" fill="#3b82f6" />
                 ) : arrowSettings.headStyle === 'none' ? null : (
-                  <path d="M 0 0 L 6 4 L 0 8 Z" fill="#3b82f6" />
+                  <path d="M 1.5 1 L 11 6 L 1.5 11 L 4 6 Z" fill="#3b82f6" />
                 )}
               </marker>
-
-              <linearGradient id="preview-grad" x1="0%" y1="0%" x2="100%" y2="0%">
-                <stop offset="0%" stopColor="#3b82f6" />
-                <stop offset="100%" stopColor="#38bdf8" />
-              </linearGradient>
             </defs>
 
             <line
@@ -87,11 +83,15 @@ export const ArrowStylePicker: React.FC<ArrowStylePickerProps> = ({
               y1="40"
               x2="160"
               y2="40"
-              stroke={arrowSettings.pattern === 'gradient' ? 'url(#preview-grad)' : '#3b82f6'}
+              stroke="#3b82f6"
               strokeWidth={
-                arrowSettings.thickness === 'thin' ? 2 : arrowSettings.thickness === 'thick' ? 4.5 : 3
+                arrowSettings.thickness === 'thin' ? 2 : arrowSettings.thickness === 'thick' ? 4 : 2.8
               }
-              strokeDasharray={arrowSettings.pattern === 'dashed' ? '5 4' : undefined}
+              strokeDasharray={
+                arrowSettings.pattern === 'dashed'
+                  ? `${(arrowSettings.thickness === 'thin' ? 2 : arrowSettings.thickness === 'thick' ? 4 : 2.8) * 2} ${(arrowSettings.thickness === 'thin' ? 2 : arrowSettings.thickness === 'thick' ? 4 : 2.8) * 1.5}`
+                  : undefined
+              }
               strokeLinecap="round"
               markerEnd="url(#preview-arrowhead)"
             />
@@ -125,7 +125,7 @@ export const ArrowStylePicker: React.FC<ArrowStylePickerProps> = ({
           <label className="text-xs font-semibold text-slate-600 dark:text-slate-300 mb-1.5 block">
             パターンスタイル
           </label>
-          <div className="grid grid-cols-3 gap-1.5">
+          <div className="grid grid-cols-2 gap-1.5">
             {patterns.map((p) => (
               <button
                 key={p.id}
@@ -152,26 +152,17 @@ export const ArrowStylePicker: React.FC<ArrowStylePickerProps> = ({
               <button
                 key={h.id}
                 onClick={() => updateArrowSettings({ headStyle: h.id })}
-                className={`py-2 px-2 text-xs rounded-xl font-medium border text-center flex items-center justify-between transition ${
+                className={`py-2 px-2 text-xs rounded-xl font-medium border text-center transition ${
                   arrowSettings.headStyle === h.id
                     ? 'border-blue-500 bg-blue-50 dark:bg-blue-950/40 text-blue-600 dark:text-blue-400 font-bold'
                     : 'border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800'
                 }`}
               >
-                <span>{h.label}</span>
-                {arrowSettings.headStyle === h.id && <Check className="w-3.5 h-3.5" />}
+                {h.label}
               </button>
             ))}
           </div>
         </div>
-
-        {/* Close Button */}
-        <button
-          onClick={onClose}
-          className="w-full mt-2 py-2.5 rounded-2xl bg-blue-600 hover:bg-blue-700 text-white font-semibold text-sm transition shadow-sm active:scale-98"
-        >
-          完了
-        </button>
       </div>
     </div>
   );

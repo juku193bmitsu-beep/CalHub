@@ -1,8 +1,9 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { useCalendar } from '../../contexts/CalendarContext';
 import { useEvents } from '../../contexts/EventContext';
 import { CalendarEvent } from '../../types/calendar';
 import { EventChip } from '../events/EventChip';
+import { formatLocalDate, isEventOnDate } from '../../services/dateUtils';
 
 interface CompareViewProps {
   currentDate: Date;
@@ -16,7 +17,8 @@ export const CompareView: React.FC<CompareViewProps> = ({
   onEventClick,
 }) => {
   const { calendars, visibleCalendarIds } = useCalendar();
-  const { filteredEvents } = useEvents();
+  const { filteredEvents, moveEventCalendar, moveEventDate } = useEvents();
+  const [draggedEventId, setDraggedEventId] = useState<string | null>(null);
 
   // Active calendars to compare
   const activeCalendars = calendars.filter((c) => visibleCalendarIds.has(c.id));
@@ -27,7 +29,24 @@ export const CompareView: React.FC<CompareViewProps> = ({
 
   const days = Array.from({ length: daysInMonth }, (_, i) => i + 1);
 
-  const pad = (n: number) => n.toString().padStart(2, '0');
+  const handleDragStart = (e: React.DragEvent, eventId: string) => {
+    e.dataTransfer.setData('text/plain', eventId);
+    setDraggedEventId(eventId);
+  };
+
+  const handleDragOver = (e: React.DragEvent) => {
+    e.preventDefault();
+  };
+
+  const handleDrop = (e: React.DragEvent, targetCalendarId: string, targetDateStr: string) => {
+    e.preventDefault();
+    const eventId = e.dataTransfer.getData('text/plain') || draggedEventId;
+    if (eventId) {
+      moveEventCalendar(eventId, targetCalendarId);
+      moveEventDate(eventId, targetDateStr);
+    }
+    setDraggedEventId(null);
+  };
 
   return (
     <div className="flex-1 flex flex-col h-full w-full select-none bg-white dark:bg-slate-900 overflow-hidden">
@@ -40,7 +59,7 @@ export const CompareView: React.FC<CompareViewProps> = ({
           {activeCalendars.map((cal) => (
             <div
               key={cal.id}
-              className="flex-1 min-w-[120px] py-2 px-2 text-center border-r border-slate-200/60 dark:border-slate-800 flex items-center justify-center gap-1.5"
+              className="flex-1 min-w-[130px] py-2 px-2 text-center border-r border-slate-200/60 dark:border-slate-800 flex items-center justify-center gap-1.5"
             >
               <span
                 className="w-2.5 h-2.5 rounded-full shrink-0"
@@ -61,13 +80,13 @@ export const CompareView: React.FC<CompareViewProps> = ({
           const dayOfWeek = dateObj.getDay();
           const isSun = dayOfWeek === 0;
           const isSat = dayOfWeek === 6;
-          const dateStr = `${year}-${pad(month)}-${pad(d)}`;
+          const dateStr = formatLocalDate(dateObj);
 
           return (
             <div
               key={d}
               onClick={() => onDateClick(dateObj)}
-              className="flex border-b border-slate-200/50 dark:border-slate-800/50 min-h-[44px] hover:bg-slate-50/50 dark:hover:bg-slate-800/30 transition-colors cursor-pointer"
+              className="flex border-b border-slate-200/50 dark:border-slate-800/50 min-h-[46px] hover:bg-slate-50/50 dark:hover:bg-slate-800/30 transition-colors cursor-pointer"
             >
               {/* Date Column */}
               <div
@@ -79,7 +98,7 @@ export const CompareView: React.FC<CompareViewProps> = ({
                     : 'text-slate-700 dark:text-slate-300'
                 }`}
               >
-                <span className="text-xs tabular-nums">{d}日</span>
+                <span className="text-xs tabular-nums font-semibold">{d}日</span>
               </div>
 
               {/* Each Calendar Lane */}
@@ -87,23 +106,30 @@ export const CompareView: React.FC<CompareViewProps> = ({
                 {activeCalendars.map((cal) => {
                   const eventsInCell = filteredEvents.filter((ev) => {
                     if (ev.calendarId !== cal.id) return false;
-                    const startStr = ev.start.date || ev.start.dateTime?.slice(0, 10);
-                    const endStr = ev.end.date || ev.end.dateTime?.slice(0, 10) || startStr;
-                    return dateStr >= (startStr || '') && dateStr <= (endStr || '');
+                    return isEventOnDate(ev, dateStr);
                   });
 
                   return (
                     <div
                       key={cal.id}
-                      className="flex-1 min-w-[120px] p-1 border-r border-slate-200/40 dark:border-slate-800/40 flex flex-col gap-1 overflow-hidden"
+                      onDragOver={handleDragOver}
+                      onDrop={(e) => handleDrop(e, cal.id, dateStr)}
+                      className="flex-1 min-w-[130px] p-1 border-r border-slate-200/40 dark:border-slate-800/40 flex flex-col gap-1 overflow-hidden transition-colors hover:bg-blue-50/20"
                     >
                       {eventsInCell.map((ev) => (
-                        <EventChip
+                        <div
                           key={ev.id}
-                          event={ev}
-                          onOpenDetail={onEventClick}
-                          isCompact
-                        />
+                          draggable
+                          onDragStart={(e) => handleDragStart(e, ev.id)}
+                          onClick={(e) => e.stopPropagation()}
+                          className="cursor-grab active:cursor-grabbing w-full min-w-0 max-w-full"
+                        >
+                          <EventChip
+                            event={ev}
+                            onOpenDetail={onEventClick}
+                            isCompact
+                          />
+                        </div>
                       ))}
                     </div>
                   );

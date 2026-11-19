@@ -2,7 +2,7 @@ import { useRef, useCallback } from 'react';
 
 interface UseLongPressOptions {
   onLongPress: (e: React.TouchEvent | React.MouseEvent) => void;
-  onClick?: () => void;
+  onClick?: (e?: React.MouseEvent) => void;
   delay?: number;
   threshold?: number;
 }
@@ -19,6 +19,9 @@ export function useLongPress({
 
   const start = useCallback(
     (e: React.TouchEvent | React.MouseEvent) => {
+      // Ignore right clicks or non-primary buttons for long press start
+      if ('button' in e && e.button !== 0) return;
+
       const clientX = 'touches' in e ? e.touches[0].clientX : e.clientX;
       const clientY = 'touches' in e ? e.touches[0].clientY : e.clientY;
       startPosRef.current = { x: clientX, y: clientY };
@@ -33,13 +36,24 @@ export function useLongPress({
   );
 
   const clear = useCallback(
-    (_e: React.TouchEvent | React.MouseEvent, shouldTriggerClick: boolean = true) => {
+    (e: React.TouchEvent | React.MouseEvent, shouldTriggerClick: boolean = true) => {
       if (timerRef.current) {
         clearTimeout(timerRef.current);
         timerRef.current = null;
       }
+
+      // Ignore right clicks or non-primary mouse buttons completely
+      if ('button' in e && e.button !== 0) {
+        startPosRef.current = null;
+        return;
+      }
+
       if (shouldTriggerClick && !isLongPressRef.current) {
-        onClick?.();
+        if ('button' in e) {
+          onClick?.(e as React.MouseEvent);
+        } else {
+          onClick?.();
+        }
       }
       startPosRef.current = null;
     },

@@ -1,8 +1,8 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { CalendarEvent } from '../../types/calendar';
 import { EventChip } from '../events/EventChip';
 import { getJapaneseHoliday } from '../../constants/holidays';
-import { useClipboard } from '../../contexts/ClipboardContext';
+import { formatLocalDate } from '../../services/dateUtils';
 import { useEvents } from '../../contexts/EventContext';
 
 interface VerticalDayRowProps {
@@ -11,6 +11,7 @@ interface VerticalDayRowProps {
   rowHeight: number;
   isToday: boolean;
   hasArrowPassing?: boolean;
+  isDraggable?: boolean;
   onDateClick: (date: Date) => void;
   onEventClick: (event: CalendarEvent) => void;
 }
@@ -21,11 +22,12 @@ export const VerticalDayRow: React.FC<VerticalDayRowProps> = ({
   rowHeight,
   isToday,
   hasArrowPassing = false,
+  isDraggable = true,
   onDateClick,
   onEventClick,
 }) => {
-  const { copiedEvent } = useClipboard();
-  const { addEvent } = useEvents();
+  const { moveEventDate } = useEvents();
+  const [isDragOver, setIsDragOver] = useState(false);
 
   const dayNum = date.getDate();
   const dayOfWeek = date.getDay(); // 0: Sun, 6: Sat
@@ -37,39 +39,6 @@ export const VerticalDayRow: React.FC<VerticalDayRowProps> = ({
 
   const weekdayNames = ['日', '月', '火', '水', '木', '金', '土'];
   const weekdayStr = weekdayNames[dayOfWeek];
-
-  const handleRowClick = () => {
-    // If copying, paste here!
-    if (copiedEvent) {
-      const pad = (n: number) => n.toString().padStart(2, '0');
-      const targetDateStr = `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}`;
-
-      if (copiedEvent.isAllDay || copiedEvent.start.date) {
-        addEvent({
-          ...copiedEvent,
-          start: { date: targetDateStr },
-          end: { date: targetDateStr },
-        });
-      } else {
-        const oldStart = new Date(copiedEvent.start.dateTime || '');
-        const oldEnd = new Date(copiedEvent.end.dateTime || '');
-        const durationMs = oldEnd.getTime() - oldStart.getTime();
-
-        const newStart = new Date(oldStart);
-        newStart.setFullYear(date.getFullYear(), date.getMonth(), date.getDate());
-        const newEnd = new Date(newStart.getTime() + durationMs);
-
-        addEvent({
-          ...copiedEvent,
-          start: { dateTime: newStart.toISOString() },
-          end: { dateTime: newEnd.toISOString() },
-        });
-      }
-      return;
-    }
-
-    onDateClick(date);
-  };
 
   // Determine weekday color
   let dayColorClass = 'text-slate-800 dark:text-slate-200';
@@ -83,10 +52,9 @@ export const VerticalDayRow: React.FC<VerticalDayRowProps> = ({
     badgeClass = 'text-blue-500 dark:text-blue-400 font-medium';
   }
 
-  // Filter events: in vertical view, multi-day non-start days don't repeat title chip
-  const pad = (n: number) => n.toString().padStart(2, '0');
-  const thisDateStr = `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(dayNum)}`;
+  const thisDateStr = formatLocalDate(date);
 
+  // Filter events: in vertical view, multi-day non-start days don't repeat title chip
   const visibleChips = events.filter((ev) => {
     const startStr = ev.start.date || ev.start.dateTime?.slice(0, 10);
     const endStr = ev.end.date || ev.end.dateTime?.slice(0, 10);
@@ -99,15 +67,41 @@ export const VerticalDayRow: React.FC<VerticalDayRowProps> = ({
     return true;
   });
 
+  const handleDragOver = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.dataTransfer.dropEffect = 'move';
+    if (!isDragOver) setIsDragOver(true);
+  };
+
+  const handleDragLeave = () => {
+    setIsDragOver(false);
+  };
+
+  const handleDrop = (e: React.DragEvent) => {
+    e.preventDefault();
+    setIsDragOver(false);
+    const eventId = e.dataTransfer.getData('text/plain');
+    if (eventId) {
+      moveEventDate(eventId, thisDateStr);
+    }
+  };
+
   return (
     <div
-      onClick={handleRowClick}
+      onClick={() => onDateClick(date)}
+      onDragOver={handleDragOver}
+      onDragLeave={handleDragLeave}
+      onDrop={handleDrop}
       style={{ height: `${rowHeight}px` }}
       className={`group relative flex items-center border-b border-slate-200/50 dark:border-slate-800/60 px-2 cursor-pointer transition-colors active:bg-blue-50/50 dark:active:bg-slate-800/50 hover:bg-slate-50/60 dark:hover:bg-slate-800/30 ${
-        isToday ? 'bg-blue-50/40 dark:bg-blue-950/20' : ''
+        isDragOver
+          ? 'bg-blue-100/80 dark:bg-blue-900/50 border-blue-400 scale-[1.002] z-10 shadow-xs'
+          : isToday
+          ? 'bg-blue-50/40 dark:bg-blue-950/20'
+          : ''
       }`}
     >
-      {/* Date Indicator (Left Column) */}
+      {/* Date Indicator (Left Column: fixed 58px width) */}
       <div className="flex items-center gap-1 w-[58px] shrink-0 select-none">
         <span
           className={`w-6 h-6 flex items-center justify-center rounded-full text-xs font-semibold tabular-nums ${
@@ -121,18 +115,29 @@ export const VerticalDayRow: React.FC<VerticalDayRowProps> = ({
         <span className={`text-[11px] ${badgeClass}`}>{weekdayStr}</span>
       </div>
 
-      {/* Events Lane: offset when an arrow passes through on days 2..end, flush with arrow origin on day 1 */}
+      {/* Events Lane:
+          When arrows pass through on days 2..end, offset by pl-6 to provide clean rail for arrow lines.
+          On start days, offset by pl-1 so the chip's anchor dot aligns precisely at x=76px!
+      */}
       <div className={`flex-1 flex items-center gap-1.5 overflow-hidden min-w-0 transition-all ${
-        hasArrowPassing ? 'pl-4' : 'pl-0.5'
+        hasArrowPassing ? 'pl-6' : 'pl-1'
       }`}>
-        {visibleChips.slice(0, 3).map((event) => (
-          <EventChip
-            key={event.id}
-            event={event}
-            onOpenDetail={onEventClick}
-            isCompact={rowHeight < 32}
-          />
-        ))}
+        {visibleChips.slice(0, 3).map((event) => {
+          const startStr = event.start.date || event.start.dateTime?.slice(0, 10);
+          const endStr = event.end.date || event.end.dateTime?.slice(0, 10);
+          const isMultiDayStart = !!startStr && !!endStr && startStr !== endStr && startStr === thisDateStr;
+
+          return (
+            <EventChip
+              key={event.id}
+              event={event}
+              onOpenDetail={onEventClick}
+              isCompact={rowHeight < 32}
+              isDraggable={isDraggable}
+              isMultiDayStart={isMultiDayStart}
+            />
+          );
+        })}
 
         {visibleChips.length > 3 && (
           <span className="text-[10px] font-semibold text-slate-500 dark:text-slate-400 bg-slate-100 dark:bg-slate-800 px-1.5 py-0.2 rounded shrink-0">

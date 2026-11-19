@@ -16,11 +16,14 @@ export function usePinchZoom({
   const [zoom, setZoom] = useState(initialZoom);
   const containerRef = useRef<HTMLDivElement | null>(null);
 
-  // Track active touch points for pinch distance
+  // Keep latest zoom in a ref to prevent re-attaching listeners during gestures
+  const zoomRef = useRef<number>(initialZoom);
+  zoomRef.current = zoom;
+
   const initialDistRef = useRef<number | null>(null);
   const initialZoomRef = useRef<number>(initialZoom);
 
-  const getDistance = (touches: React.TouchList | TouchList) => {
+  const getDistance = (touches: TouchList) => {
     if (touches.length < 2) return 0;
     const dx = touches[0].clientX - touches[1].clientX;
     const dy = touches[0].clientY - touches[1].clientY;
@@ -31,21 +34,24 @@ export function usePinchZoom({
     if (e.touches.length === 2) {
       e.preventDefault(); // Stop native iOS zoom
       initialDistRef.current = getDistance(e.touches);
-      initialZoomRef.current = zoom;
+      initialZoomRef.current = zoomRef.current;
     }
-  }, [zoom]);
+  }, []);
 
-  const handleTouchMove = useCallback((e: TouchEvent) => {
-    if (e.touches.length === 2 && initialDistRef.current !== null) {
-      e.preventDefault(); // Critical: keep page intact, scale container
-      const currentDist = getDistance(e.touches);
-      const scale = currentDist / initialDistRef.current;
-      const targetZoom = Math.min(maxZoom, Math.max(minZoom, initialZoomRef.current * scale));
-      
-      setZoom(targetZoom);
-      onZoomChange?.(targetZoom);
-    }
-  }, [maxZoom, minZoom, onZoomChange]);
+  const handleTouchMove = useCallback(
+    (e: TouchEvent) => {
+      if (e.touches.length === 2 && initialDistRef.current !== null && initialDistRef.current > 0) {
+        e.preventDefault(); // Critical: keep page intact, scale container
+        const currentDist = getDistance(e.touches);
+        const scale = currentDist / initialDistRef.current;
+        const targetZoom = Math.min(maxZoom, Math.max(minZoom, initialZoomRef.current * scale));
+
+        setZoom(targetZoom);
+        onZoomChange?.(targetZoom);
+      }
+    },
+    [maxZoom, minZoom, onZoomChange]
+  );
 
   const handleTouchEnd = useCallback((e: TouchEvent) => {
     if (e.touches.length < 2) {
@@ -88,7 +94,7 @@ export function usePinchZoom({
     onZoomChange?.(next);
   };
 
-  // Rule 4: DnD only allowed when zoomed in adequately (>= 1.4x)
+  // DnD only allowed when zoomed in adequately (>= 1.4x)
   const isDragAllowed = zoom >= 1.4;
 
   return {

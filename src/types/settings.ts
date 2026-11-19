@@ -1,5 +1,5 @@
 export type ArrowThickness = 'thin' | 'normal' | 'thick';
-export type ArrowPattern = 'solid' | 'dashed' | 'gradient';
+export type ArrowPattern = 'solid' | 'dashed';
 export type ArrowHeadStyle = 'standard' | 'minimal' | 'circle' | 'none';
 
 export interface ArrowDesignSettings {

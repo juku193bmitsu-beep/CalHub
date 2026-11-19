@@ -1,7 +1,8 @@
-import React, { createContext, useContext, useState, useEffect } from 'react';
+import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import { GoogleCalendar } from '../types/calendar';
 import { ArrowDesignSettings, UserPreferences } from '../types/settings';
 import { MOCK_CALENDARS } from '../services/mockData';
+import { CalendarApiService } from '../services/calendarApi';
 
 const DEFAULT_ARROW_SETTINGS: ArrowDesignSettings = {
   thickness: 'normal',
@@ -18,15 +19,35 @@ interface CalendarContextType {
   updateArrowSettings: (settings: Partial<ArrowDesignSettings>) => void;
   theme: 'light' | 'dark';
   toggleTheme: () => void;
+  authToken: string | null;
+  setAuthToken: (token: string | null) => void;
+  isSyncing: boolean;
+  refreshCalendars: () => Promise<void>;
 }
 
 const CalendarContext = createContext<CalendarContextType | null>(null);
 
 const STORAGE_KEY_PREFS = 'calhub_preferences_v1';
+const STORAGE_KEY_CALENDARS = 'calhub_cached_calendars_v1';
 
 export const CalendarProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const [calendars] = useState<GoogleCalendar[]>(MOCK_CALENDARS);
-  
+  const [authToken, setAuthToken] = useState<string | null>(null);
+  const [isSyncing, setIsSyncing] = useState<boolean>(false);
+
+  // Cached or mock calendars
+  const [calendars, setCalendars] = useState<GoogleCalendar[]>(() => {
+    try {
+      const saved = localStorage.getItem(STORAGE_KEY_CALENDARS);
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+      }
+    } catch {
+      // fallback
+    }
+    return MOCK_CALENDARS;
+  });
+
   // Load initial preferences
   const [visibleCalendarIds, setVisibleCalendarIds] = useState<Set<string>>(() => {
     try {
@@ -58,7 +79,49 @@ export const CalendarProvider: React.FC<{ children: React.ReactNode }> = ({ chil
 
   const [theme, setTheme] = useState<'light' | 'dark'>('light');
 
-  // Sync to localStorage
+  // Fetch calendars when token becomes available
+  const refreshCalendars = useCallback(async () => {
+    if (!authToken) {
+      setCalendars(MOCK_CALENDARS);
+      return;
+    }
+
+    try {
+      setIsSyncing(true);
+      const googleCalendars = await CalendarApiService.listCalendars(authToken);
+      if (googleCalendars.length > 0) {
+        setCalendars(googleCalendars);
+        localStorage.setItem(STORAGE_KEY_CALENDARS, JSON.stringify(googleCalendars));
+
+        // Ensure newly loaded calendars are visible if none selected
+        setVisibleCalendarIds((prev) => {
+          if (prev.size === 0) {
+            return new Set(googleCalendars.map((c) => c.id));
+          }
+          // Retain existing selections that match, add new ones if empty
+          const next = new Set<string>();
+          googleCalendars.forEach((c) => {
+            if (prev.has(c.id) || prev.has('primary')) {
+              next.add(c.id);
+            }
+          });
+          return next.size > 0 ? next : new Set([googleCalendars[0].id]);
+        });
+      }
+    } catch (err) {
+      console.error('Failed to sync Google calendars:', err);
+    } finally {
+      setIsSyncing(false);
+    }
+  }, [authToken]);
+
+  useEffect(() => {
+    if (authToken) {
+      refreshCalendars();
+    }
+  }, [authToken, refreshCalendars]);
+
+  // Sync preferences to localStorage
   useEffect(() => {
     try {
       const prefs: Partial<UserPreferences> = {
@@ -90,8 +153,8 @@ export const CalendarProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     if (visible) {
       setVisibleCalendarIds(new Set(calendars.map((c) => c.id)));
     } else {
-      // keep at least primary
-      setVisibleCalendarIds(new Set(['primary']));
+      const firstId = calendars[0]?.id || 'primary';
+      setVisibleCalendarIds(new Set([firstId]));
     }
   };
 
@@ -122,6 +185,10 @@ export const CalendarProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         updateArrowSettings,
         theme,
         toggleTheme,
+        authToken,
+        setAuthToken,
+        isSyncing,
+        refreshCalendars,
       }}
     >
       {children}

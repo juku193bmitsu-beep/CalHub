@@ -1,6 +1,10 @@
 import React from 'react';
 import { CalendarEvent } from '../../types/calendar';
 import { ArrowDesignSettings } from '../../types/settings';
+import {
+  getEventStartDateStr,
+  getEventEndDateInclusiveStr,
+} from '../../services/dateUtils';
 
 interface MultiDaySpan {
   event: CalendarEvent;
@@ -34,8 +38,8 @@ export const MultiDayArrowCanvas: React.FC<MultiDayArrowCanvasProps> = ({
 
   // Find multi-day events that overlap with this month
   const multiDayEvents = events.filter((e) => {
-    const startStr = e.start.date || e.start.dateTime?.slice(0, 10);
-    const endStr = e.end.date || e.end.dateTime?.slice(0, 10);
+    const startStr = getEventStartDateStr(e);
+    const endStr = getEventEndDateInclusiveStr(e);
     if (!startStr || !endStr) return false;
     if (startStr === endStr) return false; // single day
 
@@ -49,8 +53,8 @@ export const MultiDayArrowCanvas: React.FC<MultiDayArrowCanvasProps> = ({
   const spans: MultiDaySpan[] = [];
 
   multiDayEvents.forEach((event) => {
-    const startStr = event.start.date || event.start.dateTime?.slice(0, 10) || '';
-    const endStr = event.end.date || event.end.dateTime?.slice(0, 10) || '';
+    const startStr = getEventStartDateStr(event);
+    const endStr = getEventEndDateInclusiveStr(event);
 
     // Calculate clamped day numbers in current month
     let startDay = 1;
@@ -76,17 +80,22 @@ export const MultiDayArrowCanvas: React.FC<MultiDayArrowCanvasProps> = ({
     spans.push({ event, startDay, endDay, lane });
   });
 
-  const laneWidth = 8;
-  const laneBaseOffset = 70; // Perfectly aligned with the left accent border of the first-day event pill
+  const laneWidth = 10;
+  // Precise anchor origin aligning with the event chip's anchor dot
+  const laneBaseOffset = 76;
 
   // Arrow style mappings
   const strokeWidth =
-    arrowSettings.thickness === 'thin' ? 2 : arrowSettings.thickness === 'thick' ? 4.5 : 3;
+    arrowSettings.thickness === 'thin' ? 2 : arrowSettings.thickness === 'thick' ? 4 : 2.8;
 
   const strokeDash =
     arrowSettings.pattern === 'dashed'
-      ? '4 3'
+      ? `${strokeWidth * 2} ${strokeWidth * 1.5}`
       : undefined;
+
+  // Highly visible arrow head scale (distinct, solid & crisp)
+  const markerScale =
+    arrowSettings.thickness === 'thin' ? 4.5 : arrowSettings.thickness === 'thick' ? 3.6 : 4.0;
 
   return (
     <svg
@@ -96,52 +105,57 @@ export const MultiDayArrowCanvas: React.FC<MultiDayArrowCanvasProps> = ({
       <defs>
         {spans.map(({ event }) => {
           const color = event.backgroundColor || '#3b82f6';
-          return (
-            <React.Fragment key={`defs-${event.id}`}>
-              <marker
-                id={`arrowhead-${event.id}`}
-                markerWidth="6"
-                markerHeight="6"
-                refX="3"
-                refY="3"
-                orient="auto"
-              >
-                {arrowSettings.headStyle === 'circle' ? (
-                  <circle cx="3" cy="3" r="2.5" fill={color} />
-                ) : arrowSettings.headStyle === 'minimal' ? (
-                  <path d="M 0 0 L 3 3 L 0 6" fill="none" stroke={color} strokeWidth="1.5" />
-                ) : arrowSettings.headStyle === 'none' ? null : (
-                  <path d="M 0 0 L 4 3 L 0 6 Z" fill={color} />
-                )}
-              </marker>
 
-              {arrowSettings.pattern === 'gradient' && (
-                <linearGradient id={`grad-${event.id}`} x1="0%" y1="0%" x2="0%" y2="100%">
-                  <stop offset="0%" stop-color={color} stop-opacity="1" />
-                  <stop offset="100%" stop-color="#38bdf8" stop-opacity="0.9" />
-                </linearGradient>
+          return (
+            <marker
+              key={`marker-${event.id}`}
+              id={`arrowhead-${event.id}`}
+              markerWidth={markerScale}
+              markerHeight={markerScale}
+              viewBox="0 0 12 12"
+              refX="10.5"
+              refY="6"
+              orient="auto"
+              markerUnits="strokeWidth"
+            >
+              {arrowSettings.headStyle === 'circle' ? (
+                // Solid filled circle
+                <circle cx="6" cy="6" r="4.5" fill={color} />
+              ) : arrowSettings.headStyle === 'minimal' ? (
+                // Crisp directional arrow
+                <path
+                  d="M 2 1.5 L 10.5 6 L 2 10.5 L 4.5 6 Z"
+                  fill={color}
+                />
+              ) : arrowSettings.headStyle === 'none' ? null : (
+                // Standard: Classic Solid Sharp Arrowhead with high visibility
+                <path
+                  d="M 1.5 1 L 11 6 L 1.5 11 L 4 6 Z"
+                  fill={color}
+                />
               )}
-            </React.Fragment>
+            </marker>
           );
         })}
       </defs>
 
       {spans.map(({ event, startDay, endDay, lane }) => {
-        const startStr = event.start.date || event.start.dateTime?.slice(0, 10) || '';
+        const startStr = getEventStartDateStr(event);
         const isStartedInCurrentMonth = startStr >= monthStartStr;
 
-        // If event starts this month, arrow begins right under the first day's row (startDay * rowHeight)
-        // If continuing from previous month, it starts from top of month (0)
         if (isStartedInCurrentMonth && endDay <= startDay) {
           return null;
         }
 
-        const topY = isStartedInCurrentMonth ? startDay * rowHeight : 0;
-        const bottomY = (endDay - 1) * rowHeight + rowHeight * 0.55;
+        // Start directly from the anchor dot of the start-day event chip
+        const topY = isStartedInCurrentMonth
+          ? (startDay - 1) * rowHeight + rowHeight * 0.5
+          : 0;
+
+        // End precisely at the bottom of the final day row (border boundary)
+        const bottomY = endDay * rowHeight - 4;
         const xPos = laneBaseOffset + lane * laneWidth;
         const color = event.backgroundColor || '#3b82f6';
-        const strokeColor =
-          arrowSettings.pattern === 'gradient' ? `url(#grad-${event.id})` : color;
 
         return (
           <g
@@ -152,20 +166,20 @@ export const MultiDayArrowCanvas: React.FC<MultiDayArrowCanvasProps> = ({
               onEventClick(event);
             }}
           >
-            {/* Vertical arrow line starting from below the event row */}
+            {/* Direct vertical solid or dashed arrow line extending to the bottom of the final day row */}
             <line
               x1={xPos}
               y1={topY}
               x2={xPos}
               y2={bottomY}
-              stroke={strokeColor}
+              stroke={color}
               strokeWidth={strokeWidth}
               strokeDasharray={strokeDash}
               strokeLinecap="round"
               markerEnd={`url(#arrowhead-${event.id})`}
             />
 
-            {/* Invisible thicker line for easy touch tap */}
+            {/* Invisible thicker hit area for touch/click */}
             <line
               x1={xPos}
               y1={topY}
