@@ -42,7 +42,7 @@ export const EventChip: React.FC<EventChipProps> = ({
 }) => {
   const { copyEvent } = useClipboard();
   const { deleteEvent } = useEvents();
-  const { calendars, timedEventStyle } = useCalendar();
+  const { calendars, timedEventStyle, verticalFontSize, verticalFontWeight } = useCalendar();
   const [showMenu, setShowMenu] = useState(false);
   const [menuPos, setMenuPos] = useState<{ x: number; y: number } | null>(null);
   const [isDragging, setIsDragging] = useState(false);
@@ -135,6 +135,33 @@ export const EventChip: React.FC<EventChipProps> = ({
   const bgColorLight = hexToRgba(rawColor, 0.22);
   const borderColorLight = hexToRgba(rawColor, 0.55);
 
+  // Typography mapping for title & time based on settings
+  const titleSizeClass = isCompact
+    ? verticalFontSize === 'xlarge'
+      ? 'text-[12px]'
+      : verticalFontSize === 'large'
+      ? 'text-[11px]'
+      : 'text-[9.5px]'
+    : verticalFontSize === 'xlarge'
+    ? 'text-[13px] sm:text-sm'
+    : verticalFontSize === 'large'
+    ? 'text-[12px] sm:text-xs'
+    : 'text-[10.5px] sm:text-xs';
+
+  const titleWeightClass =
+    verticalFontWeight === 'extrabold'
+      ? 'font-extrabold'
+      : verticalFontWeight === 'bold'
+      ? 'font-bold'
+      : 'font-medium';
+
+  const timeSizeClass =
+    verticalFontSize === 'xlarge'
+      ? 'text-[10.5px] sm:text-[11.5px]'
+      : verticalFontSize === 'large'
+      ? 'text-[10px] sm:text-[11px]'
+      : 'text-[9px] sm:text-[10px]';
+
   return (
     <div
       onContextMenu={handleContextMenu}
@@ -170,23 +197,23 @@ export const EventChip: React.FC<EventChipProps> = ({
                 borderColor: borderColorLight,
               }
         }
-        className={`w-full no-select cursor-grab active:cursor-grabbing transition-all select-none text-[10px] sm:text-xs flex items-center gap-1 shadow-2xs border hover:shadow-xs overflow-hidden ${
+        className={`w-full no-select cursor-grab active:cursor-grabbing transition-all select-none flex items-center gap-1 shadow-2xs border hover:shadow-xs overflow-hidden ${
           isAllDay
-            ? 'rounded-lg px-1.5 sm:px-2 py-0.5 font-medium text-white shadow-xs'
+            ? 'rounded-lg px-1.5 sm:px-2 py-0.5 text-white shadow-xs'
             : timedEventStyle === 'underbar'
-            ? 'px-1 py-0.5 font-medium text-slate-800 dark:text-slate-100 shadow-none'
-            : 'rounded-lg px-1.5 sm:px-2 py-0.5 font-medium text-slate-800 dark:text-slate-100'
-        } ${isCompact ? 'h-[20px] text-[9.5px] sm:text-[10px]' : 'h-[23px]'} ${
+            ? 'px-1 py-0.5 text-slate-800 dark:text-slate-100 shadow-none'
+            : 'rounded-lg px-1.5 sm:px-2 py-0.5 text-slate-800 dark:text-slate-100'
+        } ${isCompact ? 'h-[20px]' : 'h-[23px]'} ${
           isDragging ? 'opacity-40 scale-95 border-dashed border-blue-400' : ''
         }`}
       >
         {timeText && (
-          <span className="text-[9px] sm:text-[10px] opacity-75 font-normal tabular-nums shrink-0">
+          <span className={`${timeSizeClass} opacity-80 font-normal tabular-nums shrink-0`}>
             {timeText}
           </span>
         )}
 
-        <span className="truncate leading-tight font-medium tracking-tight flex-1">
+        <span className={`truncate leading-tight tracking-tight flex-1 ${titleSizeClass} ${titleWeightClass}`}>
           {event.summary || '(タイトルなし)'}
         </span>
       </div>

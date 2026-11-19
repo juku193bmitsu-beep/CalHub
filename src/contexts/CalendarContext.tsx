@@ -1,6 +1,12 @@
 import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import { GoogleCalendar } from '../types/calendar';
-import { ArrowDesignSettings, UserPreferences, TimedEventStyle } from '../types/settings';
+import {
+  ArrowDesignSettings,
+  UserPreferences,
+  TimedEventStyle,
+  VerticalFontSize,
+  VerticalFontWeight,
+} from '../types/settings';
 import { MOCK_CALENDARS } from '../services/mockData';
 import { CalendarApiService } from '../services/calendarApi';
 
@@ -21,6 +27,10 @@ interface CalendarContextType {
   setTimedEventStyle: (style: TimedEventStyle) => void;
   showZoomControls: boolean;
   setShowZoomControls: (show: boolean) => void;
+  verticalFontSize: VerticalFontSize;
+  setVerticalFontSize: (size: VerticalFontSize) => void;
+  verticalFontWeight: VerticalFontWeight;
+  setVerticalFontWeight: (weight: VerticalFontWeight) => void;
   theme: 'light' | 'dark';
   toggleTheme: () => void;
   authToken: string | null;
@@ -137,6 +147,36 @@ export const CalendarProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     return true;
   });
 
+  const [verticalFontSize, setVerticalFontSize] = useState<VerticalFontSize>(() => {
+    try {
+      const saved = localStorage.getItem(STORAGE_KEY_PREFS);
+      if (saved) {
+        const parsed: UserPreferences = JSON.parse(saved);
+        if (parsed.verticalFontSize) {
+          return parsed.verticalFontSize;
+        }
+      }
+    } catch {
+      // fallback
+    }
+    return 'large'; // Default to large for high readability
+  });
+
+  const [verticalFontWeight, setVerticalFontWeight] = useState<VerticalFontWeight>(() => {
+    try {
+      const saved = localStorage.getItem(STORAGE_KEY_PREFS);
+      if (saved) {
+        const parsed: UserPreferences = JSON.parse(saved);
+        if (parsed.verticalFontWeight) {
+          return parsed.verticalFontWeight;
+        }
+      }
+    } catch {
+      // fallback
+    }
+    return 'bold'; // Default to bold for high readability
+  });
+
   const [theme, setTheme] = useState<'light' | 'dark'>('light');
 
   // Fetch calendars when token becomes available
@@ -189,13 +229,15 @@ export const CalendarProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         arrowSettings,
         timedEventStyle,
         showZoomControls,
+        verticalFontSize,
+        verticalFontWeight,
         theme,
       };
       localStorage.setItem(STORAGE_KEY_PREFS, JSON.stringify(prefs));
     } catch (e) {
       console.error('Failed to save preferences to localStorage', e);
     }
-  }, [visibleCalendarIds, arrowSettings, timedEventStyle, showZoomControls, theme]);
+  }, [visibleCalendarIds, arrowSettings, timedEventStyle, showZoomControls, verticalFontSize, verticalFontWeight, theme]);
 
   const toggleCalendarVisibility = (id: string) => {
     setVisibleCalendarIds((prev) => {
@@ -249,6 +291,10 @@ export const CalendarProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         setTimedEventStyle,
         showZoomControls,
         setShowZoomControls,
+        verticalFontSize,
+        setVerticalFontSize,
+        verticalFontWeight,
+        setVerticalFontWeight,
         theme,
         toggleTheme,
         authToken,

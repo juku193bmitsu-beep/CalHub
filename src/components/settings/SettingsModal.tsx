@@ -2,7 +2,13 @@ import React, { useState, useEffect } from 'react';
 import { useCalendar } from '../../contexts/CalendarContext';
 import { useEvents } from '../../contexts/EventContext';
 import { googleAuth } from '../../services/googleAuth';
-import { ArrowThickness, ArrowPattern, ArrowHeadStyle } from '../../types/settings';
+import {
+  ArrowThickness,
+  ArrowPattern,
+  ArrowHeadStyle,
+  VerticalFontSize,
+  VerticalFontWeight,
+} from '../../types/settings';
 import {
   X,
   Check,
@@ -41,6 +47,10 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
     setTimedEventStyle,
     showZoomControls,
     setShowZoomControls,
+    verticalFontSize,
+    setVerticalFontSize,
+    verticalFontWeight,
+    setVerticalFontWeight,
     authToken,
     setAuthToken,
     theme,
@@ -139,6 +149,18 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
     { id: 'circle', label: '丸ノード' },
     { id: 'minimal', label: 'ミニマル' },
     { id: 'none', label: 'なし (直線)' },
+  ];
+
+  const fontSizes: { id: VerticalFontSize; label: string }[] = [
+    { id: 'normal', label: '標準' },
+    { id: 'large', label: '大 (推奨)' },
+    { id: 'xlarge', label: '特大' },
+  ];
+
+  const fontWeights: { id: VerticalFontWeight; label: string }[] = [
+    { id: 'normal', label: '通常' },
+    { id: 'bold', label: '太字 (推奨)' },
+    { id: 'extrabold', label: '極太' },
   ];
 
   return (
@@ -519,6 +541,139 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                       10:00 会議
                     </div>
                   </button>
+                </div>
+              </div>
+
+              {/* Vertical Typography: Font Size & Weight Customization */}
+              <div className="p-3.5 rounded-2xl bg-slate-50/80 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700/80 space-y-3">
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-bold text-slate-800 dark:text-slate-200">
+                    縦型カレンダーの文字設定（日にち・曜日・予定）
+                  </span>
+                  <span className="text-[10px] text-blue-600 dark:text-blue-400 font-semibold bg-blue-100/70 dark:bg-blue-900/50 px-2 py-0.5 rounded-full">
+                    行の高さは維持
+                  </span>
+                </div>
+
+                {/* Typography Live Preview */}
+                <div className="p-2.5 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700/80 flex items-center gap-2">
+                  <div className="flex items-center gap-1 shrink-0">
+                    <span
+                      className={`w-6 h-6 flex items-center justify-center rounded-full bg-blue-600 text-white tabular-nums ${
+                        verticalFontSize === 'xlarge'
+                          ? 'text-[15px]'
+                          : verticalFontSize === 'large'
+                          ? 'text-[13.5px]'
+                          : 'text-xs'
+                      } ${
+                        verticalFontWeight === 'extrabold'
+                          ? 'font-black'
+                          : verticalFontWeight === 'bold'
+                          ? 'font-bold'
+                          : 'font-semibold'
+                      }`}
+                    >
+                      19
+                    </span>
+                    <span
+                      className={`${
+                        verticalFontSize === 'xlarge'
+                          ? 'text-[13px]'
+                          : verticalFontSize === 'large'
+                          ? 'text-xs'
+                          : 'text-[11px]'
+                      } ${
+                        verticalFontWeight === 'extrabold'
+                          ? 'font-black'
+                          : verticalFontWeight === 'bold'
+                          ? 'font-bold'
+                          : 'font-medium'
+                      } text-slate-700 dark:text-slate-300`}
+                    >
+                      木
+                    </span>
+                  </div>
+
+                  <div className="flex-1 min-w-0">
+                    <div
+                      className="h-[22px] px-2 rounded-lg bg-blue-500/20 border border-blue-500/60 flex items-center gap-1.5 overflow-hidden"
+                    >
+                      <span
+                        className={`${
+                          verticalFontSize === 'xlarge'
+                            ? 'text-[10.5px]'
+                            : verticalFontSize === 'large'
+                            ? 'text-[10px]'
+                            : 'text-[9px]'
+                        } opacity-80 font-normal tabular-nums shrink-0 text-slate-700 dark:text-slate-200`}
+                      >
+                        10:00
+                      </span>
+                      <span
+                        className={`truncate leading-tight tracking-tight flex-1 ${
+                          verticalFontSize === 'xlarge'
+                            ? 'text-[13px]'
+                            : verticalFontSize === 'large'
+                            ? 'text-[12px]'
+                            : 'text-[10.5px]'
+                        } ${
+                          verticalFontWeight === 'extrabold'
+                            ? 'font-extrabold'
+                            : verticalFontWeight === 'bold'
+                            ? 'font-bold'
+                            : 'font-medium'
+                        } text-slate-800 dark:text-slate-100`}
+                      >
+                        企画会議（新製品）
+                      </span>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Font Size Selector */}
+                <div>
+                  <div className="text-[11px] font-semibold text-slate-600 dark:text-slate-400 mb-1.5">
+                    文字の大きさ
+                  </div>
+                  <div className="grid grid-cols-3 gap-1.5 bg-slate-200/60 dark:bg-slate-700/60 p-1 rounded-xl">
+                    {fontSizes.map((item) => (
+                      <button
+                        key={item.id}
+                        type="button"
+                        onClick={() => setVerticalFontSize(item.id)}
+                        className={`py-1.5 px-2 rounded-lg text-xs font-semibold transition active:scale-95 ${
+                          verticalFontSize === item.id
+                            ? 'bg-white dark:bg-slate-800 text-blue-600 dark:text-blue-400 shadow-xs'
+                            : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-100'
+                        }`}
+                      >
+                        {item.label}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Font Weight Selector */}
+                <div>
+                  <div className="text-[11px] font-semibold text-slate-600 dark:text-slate-400 mb-1.5">
+                    文字の太さ
+                  </div>
+                  <div className="grid grid-cols-3 gap-1.5 bg-slate-200/60 dark:bg-slate-700/60 p-1 rounded-xl">
+                    {fontWeights.map((item) => (
+                      <button
+                        key={item.id}
+                        type="button"
+                        onClick={() => setVerticalFontWeight(item.id)}
+                        className={`py-1.5 px-2 rounded-lg text-xs font-semibold transition active:scale-95 ${
+                          verticalFontWeight === item.id
+                            ? 'bg-white dark:bg-slate-800 text-blue-600 dark:text-blue-400 shadow-xs'
+                            : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-100'
+                        }`}
+                      >
+                        {item.label}
+                      </button>
+                    ))}
+                  </div>
                 </div>
               </div>
 

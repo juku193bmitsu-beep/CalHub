@@ -4,6 +4,7 @@ import { EventChip } from '../events/EventChip';
 import { getJapaneseHoliday } from '../../constants/holidays';
 import { formatLocalDate, getEventStartDateStr, isMultiDayEvent } from '../../services/dateUtils';
 import { useEvents } from '../../contexts/EventContext';
+import { useCalendar } from '../../contexts/CalendarContext';
 import { isClickSuppressed, suppressNextClicks, triggerHaptic } from '../../services/gestureUtils';
 
 interface VerticalDayRowProps {
@@ -28,6 +29,7 @@ export const VerticalDayRow: React.FC<VerticalDayRowProps> = ({
   onEventClick,
 }) => {
   const { moveEventDate } = useEvents();
+  const { verticalFontSize, verticalFontWeight } = useCalendar();
   const [isDragOver, setIsDragOver] = useState(false);
 
   const dayNum = date.getDate();
@@ -173,20 +175,52 @@ export const VerticalDayRow: React.FC<VerticalDayRowProps> = ({
       {/* Date Indicator (Left Column: fixed 58px width) */}
       <div className="flex items-center gap-1 w-[58px] shrink-0 select-none">
         <span
-          className={`w-6 h-6 flex items-center justify-center rounded-full text-xs tabular-nums ${
+          className={`w-6 h-6 flex items-center justify-center rounded-full tabular-nums ${
+            verticalFontSize === 'xlarge'
+              ? 'text-[15px]'
+              : verticalFontSize === 'large'
+              ? 'text-[13.5px]'
+              : 'text-xs'
+          } ${
+            verticalFontWeight === 'extrabold'
+              ? 'font-black'
+              : verticalFontWeight === 'bold'
+              ? 'font-bold'
+              : 'font-semibold'
+          } ${
             isToday
-              ? 'bg-blue-600 text-white font-bold shadow-md ring-2 ring-blue-300 dark:ring-blue-600'
-              : `${dayColorClass} font-semibold`
+              ? 'bg-blue-600 text-white shadow-md ring-2 ring-blue-300 dark:ring-blue-600'
+              : dayColorClass
           }`}
         >
           {dayNum}
         </span>
         {isToday ? (
-          <span className="text-[10px] font-bold text-blue-600 dark:text-blue-400 bg-blue-100/90 dark:bg-blue-900/60 px-1 py-0.2 rounded leading-none">
+          <span
+            className={`font-bold text-blue-600 dark:text-blue-400 bg-blue-100/90 dark:bg-blue-900/60 px-1 py-0.2 rounded leading-none ${
+              verticalFontSize === 'xlarge' ? 'text-xs' : 'text-[10px]'
+            }`}
+          >
             今日
           </span>
         ) : (
-          <span className={`text-[11px] ${badgeClass}`}>{weekdayStr}</span>
+          <span
+            className={`${
+              verticalFontSize === 'xlarge'
+                ? 'text-[13px]'
+                : verticalFontSize === 'large'
+                ? 'text-xs'
+                : 'text-[11px]'
+            } ${
+              verticalFontWeight === 'extrabold'
+                ? 'font-black'
+                : verticalFontWeight === 'bold'
+                ? 'font-bold'
+                : 'font-medium'
+            } ${badgeClass}`}
+          >
+            {weekdayStr}
+          </span>
         )}
       </div>
 
