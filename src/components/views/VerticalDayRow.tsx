@@ -187,10 +187,18 @@ export const VerticalDayRow: React.FC<VerticalDayRowProps> = ({
       {/* Events Lane:
           When arrows pass through on days 2..end, offset by pl-6 to provide clean rail for arrow lines.
           On start days, offset by pl-1 so the chip's anchor dot aligns precisely at x=76px!
+          Mobile layout uses CSS Grid (1fr 1fr 1fr auto when badge exists, 3 cols otherwise)
+          so 3 chips + badge fill the full width with zero trailing dead space.
       */}
-      <div className={`flex-1 flex items-center gap-1 overflow-hidden min-w-0 transition-all ${
-        hasArrowPassing ? 'pl-6' : 'pl-1'
-      }`}>
+      <div
+        className={`flex-1 grid ${
+          visibleChips.length > 3
+            ? 'grid-cols-[1fr_1fr_1fr_auto]'
+            : 'grid-cols-3'
+        } sm:flex sm:items-center gap-1 items-center overflow-hidden min-w-0 transition-all ${
+          hasArrowPassing ? 'pl-6' : 'pl-1'
+        }`}
+      >
         {visibleChips.slice(0, 3).map((event) => {
           const startStr = event.start.date || event.start.dateTime?.slice(0, 10);
           const endStr = event.end.date || event.end.dateTime?.slice(0, 10);
@@ -204,6 +212,7 @@ export const VerticalDayRow: React.FC<VerticalDayRowProps> = ({
               isCompact={rowHeight < 32}
               isDraggable={isDraggable}
               isMultiDayStart={isMultiDayStart}
+              className="w-full min-w-0 sm:w-[130px] md:w-[150px] sm:flex-none"
             />
           );
         })}
@@ -216,7 +225,7 @@ export const VerticalDayRow: React.FC<VerticalDayRowProps> = ({
               triggerHaptic('light');
               onDateClick(date);
             }}
-            className="flex items-center justify-center shrink-0 h-[20px] px-1.5 text-[10px] font-bold text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-950/80 border border-blue-200 dark:border-blue-800 rounded-md shadow-2xs hover:bg-blue-100 dark:hover:bg-blue-900 transition active:scale-95 cursor-pointer"
+            className="flex items-center justify-center shrink-0 h-[20px] px-1.5 text-[10px] font-bold text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-950/80 border border-blue-200 dark:border-blue-800 rounded-md shadow-2xs hover:bg-blue-100 dark:hover:bg-blue-900 transition active:scale-95 cursor-pointer whitespace-nowrap"
             title={`他 ${visibleChips.length - 3} 件の予定があります（タップで詳細表示）`}
           >
             +{visibleChips.length - 3}

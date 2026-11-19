@@ -15,6 +15,7 @@ interface EventChipProps {
   isDraggable?: boolean;
   showTime?: boolean;
   isMultiDayStart?: boolean;
+  className?: string;
 }
 
 // Convert hex color to rgba with specific opacity
@@ -37,6 +38,7 @@ export const EventChip: React.FC<EventChipProps> = ({
   isDraggable = true,
   showTime = false,
   isMultiDayStart: _isMultiDayStart = false,
+  className,
 }) => {
   const { copyEvent } = useClipboard();
   const { deleteEvent } = useEvents();
@@ -137,7 +139,9 @@ export const EventChip: React.FC<EventChipProps> = ({
     <div
       onContextMenu={handleContextMenu}
       onClick={(e) => e.stopPropagation()}
-      className="relative inline-flex w-[84px] xs:w-[88px] sm:w-[130px] md:w-[150px] shrink-0 min-w-0"
+      className={`relative inline-flex min-w-0 ${
+        className || 'w-[84px] xs:w-[88px] sm:w-[130px] md:w-[150px] shrink-0'
+      }`}
     >
       <div
         {...longPressProps}
