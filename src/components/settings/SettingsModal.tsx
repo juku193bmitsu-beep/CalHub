@@ -91,7 +91,8 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
     setIsLoggingIn(true);
     setLoginError(null);
     try {
-      const token = await googleAuth.requestToken();
+      // Force account selection to ensure fresh, uncorrupted access token
+      const token = await googleAuth.requestToken('select_account');
       setAuthToken(token);
     } catch (err: any) {
       console.error('Google login failed:', err);
@@ -103,6 +104,9 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
 
   const handleGoogleLogout = () => {
     setAuthToken(null);
+    try {
+      localStorage.removeItem('calhub_auth_bar_dismissed_v1');
+    } catch {}
   };
 
   const handleClearDemoData = () => {

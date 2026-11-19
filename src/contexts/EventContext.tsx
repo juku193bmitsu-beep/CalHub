@@ -322,6 +322,7 @@ export const EventProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   // Fetch when token or visible calendars change
   useEffect(() => {
     if (authToken) {
+      fetchedMonthsRef.current.clear();
       refreshEvents();
     }
   }, [authToken, visibleCalendarIds, refreshEvents]);
