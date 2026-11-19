@@ -1,9 +1,10 @@
-import React, { createContext, useContext, useState, useEffect, useMemo, useCallback } from 'react';
+import React, { createContext, useContext, useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import { CalendarEvent } from '../types/calendar';
 import { generateInitialMockEvents } from '../services/mockData';
 import { useCalendar } from './CalendarContext';
 import { CalendarApiService } from '../services/calendarApi';
 import { isEventOnDate } from '../services/dateUtils';
+import { loadEventsFromDb, saveEventsToDb, deleteEventFromDb, clearEventsDb } from '../services/storageDb';
 
 interface EventContextType {
   events: CalendarEvent[];
@@ -30,6 +31,7 @@ export const EventProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   const { visibleCalendarIds, authToken, calendars } = useCalendar();
   const [isSyncingEvents, setIsSyncingEvents] = useState<boolean>(false);
   const [syncStatusMessage, setSyncStatusMessage] = useState<string | null>(null);
+  const isSyncingRef = useRef<boolean>(false);
 
   // Load from localStorage or initialize with mock data
   const [events, setEvents] = useState<CalendarEvent[]>(() => {
@@ -47,12 +49,31 @@ export const EventProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     return generateInitialMockEvents();
   });
 
-  // Save to localStorage whenever events change (with automatic safe fallback for large datasets)
+  // Load complete multi-year archive from IndexedDB on mount
   useEffect(() => {
+    loadEventsFromDb().then((dbEvents) => {
+      if (dbEvents && dbEvents.length > 0) {
+        setEvents((prev) => {
+          // Merge IndexedDB events with current state, prioritizing IndexedDB
+          const map = new Map<string, CalendarEvent>();
+          prev.forEach((e) => map.set(e.id, e));
+          dbEvents.forEach((e) => map.set(e.id, e));
+          return Array.from(map.values());
+        });
+      }
+    });
+  }, []);
+
+  // Save to IndexedDB (complete storage) and localStorage (fast cache fallback)
+  useEffect(() => {
+    if (events.length > 0) {
+      saveEventsToDb(events);
+    }
+
     try {
       localStorage.setItem(STORAGE_KEY_EVENTS, JSON.stringify(events));
     } catch (e) {
-      console.warn('Storage quota exceeded, caching recent 3 years to localStorage while keeping all in memory:', e);
+      // LocalStorage quota fallback: store recent 3 years
       try {
         const cutoffYear = new Date().getFullYear() - 3;
         const recentEvents = events.filter((ev) => {
@@ -61,50 +82,49 @@ export const EventProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         });
         localStorage.setItem(STORAGE_KEY_EVENTS, JSON.stringify(recentEvents));
       } catch {
-        // Ignore if storage is completely full
+        // Ignore quota error as IndexedDB safely holds all data
       }
     }
   }, [events]);
 
-  // Sync events from Google Calendar API in safe, chunked multi-year slices (Past 10 years to Future 1 year)
+  // Sync events from Google Calendar API in 3 reliable multi-year slices
+  // Slice 1: Recent & Future (currentYear - 1 to currentYear + 1)
+  // Slice 2: Mid Past (currentYear - 5 to currentYear - 2)
+  // Slice 3: Deep Past (currentYear - 10 to currentYear - 6)
   const refreshEvents = useCallback(async () => {
-    if (!authToken || visibleCalendarIds.size === 0) return;
+    if (!authToken || visibleCalendarIds.size === 0 || isSyncingRef.current) return;
 
     try {
+      isSyncingRef.current = true;
       setIsSyncingEvents(true);
       setSyncStatusMessage('Googleカレンダーから予定を取得中...');
 
       const now = new Date();
       const currentYear = now.getFullYear();
-      const startYear = currentYear - 10; // 10 years ago
-      const endYear = currentYear + 1;    // 1 year ahead
 
-      // Generate 2-year chunks to prevent Google API recurrences/singleEvents explosion & timeouts
-      // Prioritize current & future years first, then sequentially/parallelly load past years
-      interface TimeChunk {
+      interface TimeSlice {
         name: string;
         timeMin: string;
         timeMax: string;
       }
 
-      const chunks: TimeChunk[] = [];
-      // 1. Current & Future Chunk (First priority)
-      chunks.push({
-        name: `${currentYear}〜${endYear}年`,
-        timeMin: new Date(currentYear, 0, 1).toISOString(),
-        timeMax: new Date(endYear, 11, 31, 23, 59, 59).toISOString(),
-      });
-
-      // 2. Past Chunks (2-year steps back to 10 years ago)
-      for (let y = currentYear - 1; y >= startYear; y -= 2) {
-        const chunkStart = Math.max(startYear, y - 1);
-        const chunkEnd = y;
-        chunks.push({
-          name: `${chunkStart}〜${chunkEnd}年`,
-          timeMin: new Date(chunkStart, 0, 1).toISOString(),
-          timeMax: new Date(chunkEnd, 11, 31, 23, 59, 59).toISOString(),
-        });
-      }
+      const slices: TimeSlice[] = [
+        {
+          name: `${currentYear - 1}〜${currentYear + 1}年（直近・未来1年）`,
+          timeMin: new Date(currentYear - 1, 0, 1).toISOString(),
+          timeMax: new Date(currentYear + 1, 11, 31, 23, 59, 59).toISOString(),
+        },
+        {
+          name: `${currentYear - 5}〜${currentYear - 2}年（過去5年）`,
+          timeMin: new Date(currentYear - 5, 0, 1).toISOString(),
+          timeMax: new Date(currentYear - 2, 11, 31, 23, 59, 59).toISOString(),
+        },
+        {
+          name: `${currentYear - 10}〜${currentYear - 6}年（過去10年）`,
+          timeMin: new Date(currentYear - 10, 0, 1).toISOString(),
+          timeMax: new Date(currentYear - 6, 11, 31, 23, 59, 59).toISOString(),
+        },
+      ];
 
       const activeCalList = Array.from(visibleCalendarIds).map((calId) => {
         return {
@@ -113,67 +133,47 @@ export const EventProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         };
       });
 
-      // Map to deduplicate events by id
-      const eventMap = new Map<string, CalendarEvent>();
+      let totalSyncedCount = 0;
 
-      // Fetch Chunk 1 (Current & Future) immediately so user sees their active calendar right away
-      const initialChunk = chunks[0];
-      const initialPromises = activeCalList.map(({ id, color }) =>
-        CalendarApiService.listEvents(
-          authToken,
-          id,
-          initialChunk.timeMin,
-          initialChunk.timeMax,
-          undefined,
-          color
-        ).catch((err) => {
-          console.warn(`Initial chunk fetch failed for ${id}:`, err);
-          return [] as CalendarEvent[];
-        })
-      );
+      for (let s = 0; s < slices.length; s++) {
+        const slice = slices[s];
+        if (s > 0) {
+          setSyncStatusMessage(`過去の予定を同期中... (${slice.name})`);
+          // Throttle between slices to avoid burst rate limits
+          await new Promise((r) => setTimeout(r, 120));
+        }
 
-      const initialResults = await Promise.all(initialPromises);
-      initialResults.flat().forEach((ev) => eventMap.set(ev.id, ev));
-
-      // Update events immediately with current/future data
-      if (eventMap.size > 0) {
-        setEvents((prev) => {
-          const unaffected = prev.filter((e) => !visibleCalendarIds.has(e.calendarId));
-          return [...Array.from(eventMap.values()), ...unaffected];
-        });
-      }
-
-      // Fetch past chunks sequentially to avoid rate limiting and ensure complete past 10-year depth
-      const pastChunks = chunks.slice(1);
-      for (let i = 0; i < pastChunks.length; i++) {
-        const chunk = pastChunks[i];
-        setSyncStatusMessage(`過去の予定を同期中... (${chunk.name})`);
-
-        const chunkPromises = activeCalList.map(({ id, color }) =>
+        const slicePromises = activeCalList.map(({ id, color }) =>
           CalendarApiService.listEvents(
             authToken,
             id,
-            chunk.timeMin,
-            chunk.timeMax,
+            slice.timeMin,
+            slice.timeMax,
             undefined,
             color
           ).catch((err) => {
-            console.warn(`Chunk ${chunk.name} failed for ${id}:`, err);
+            console.warn(`Slice ${slice.name} failed for ${id}:`, err);
             return [] as CalendarEvent[];
           })
         );
 
-        const chunkResults = await Promise.all(chunkPromises);
-        chunkResults.flat().forEach((ev) => eventMap.set(ev.id, ev));
+        const sliceResults = await Promise.all(slicePromises);
+        const newEvents = sliceResults.flat();
+        totalSyncedCount += newEvents.length;
 
-        // Periodically update state as past data streams in
-        setEvents((prev) => {
-          const unaffected = prev.filter((e) => !visibleCalendarIds.has(e.calendarId));
-          return [...Array.from(eventMap.values()), ...unaffected];
-        });
+        if (newEvents.length > 0) {
+          setEvents((prev) => {
+            const map = new Map<string, CalendarEvent>();
+            // Keep all existing events
+            prev.forEach((ev) => map.set(ev.id, ev));
+            // Merge / update with newly fetched events
+            newEvents.forEach((ev) => map.set(ev.id, ev));
+            return Array.from(map.values());
+          });
+        }
       }
 
-      setSyncStatusMessage(`同期完了: 過去10年分の予定（計 ${eventMap.size} 件）`);
+      setSyncStatusMessage(`同期完了: 過去10年〜未来1年（計 ${totalSyncedCount} 件）`);
       setTimeout(() => setSyncStatusMessage(null), 3000);
     } catch (err) {
       console.error('Error syncing events from Google:', err);
@@ -181,6 +181,7 @@ export const EventProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       setTimeout(() => setSyncStatusMessage(null), 4000);
     } finally {
       setIsSyncingEvents(false);
+      isSyncingRef.current = false;
     }
   }, [authToken, visibleCalendarIds, calendars]);
 
@@ -258,6 +259,7 @@ export const EventProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   const deleteEvent = async (id: string) => {
     const target = events.find((e) => e.id === id);
     setEvents((prev) => prev.filter((e) => e.id !== id));
+    deleteEventFromDb(id);
 
     if (authToken && target) {
       try {
@@ -366,6 +368,7 @@ export const EventProvider: React.FC<{ children: React.ReactNode }> = ({ childre
 
   const clearAllEvents = () => {
     setEvents([]);
+    clearEventsDb();
     localStorage.removeItem(STORAGE_KEY_EVENTS);
   };
 

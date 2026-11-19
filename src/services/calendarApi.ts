@@ -7,30 +7,46 @@ export class CalendarApiService {
   private static async request<T>(
     endpoint: string,
     token: string,
-    options: RequestInit = {}
+    options: RequestInit = {},
+    retryCount = 0
   ): Promise<T> {
-    const res = await fetch(`${BASE_URL}${endpoint}`, {
-      ...options,
-      headers: {
-        Authorization: `Bearer ${token}`,
-        'Content-Type': 'application/json',
-        ...(options.headers || {}),
-      },
-    });
+    try {
+      const res = await fetch(`${BASE_URL}${endpoint}`, {
+        ...options,
+        headers: {
+          Authorization: `Bearer ${token}`,
+          'Content-Type': 'application/json',
+          ...(options.headers || {}),
+        },
+      });
 
-    if (!res.ok) {
-      const errBody = await res.json().catch(() => ({}));
-      const error: any = new Error(errBody.error?.message || `API error ${res.status}`);
-      error.status = res.status;
-      error.code = errBody.error?.code;
-      throw error;
+      // Handle Rate Limiting (429) or Server Overload (500, 503) with exponential backoff retry
+      if ((res.status === 429 || res.status >= 500) && retryCount < 2) {
+        const delay = (retryCount + 1) * 1000;
+        await new Promise((r) => setTimeout(r, delay));
+        return this.request<T>(endpoint, token, options, retryCount + 1);
+      }
+
+      if (!res.ok) {
+        const errBody = await res.json().catch(() => ({}));
+        const error: any = new Error(errBody.error?.message || `API error ${res.status}`);
+        error.status = res.status;
+        error.code = errBody.error?.code;
+        throw error;
+      }
+
+      if (res.status === 204) {
+        return {} as T;
+      }
+
+      return res.json();
+    } catch (err: any) {
+      if (retryCount < 2 && (err?.status === 429 || err?.message?.includes('network'))) {
+        await new Promise((r) => setTimeout(r, 1200));
+        return this.request<T>(endpoint, token, options, retryCount + 1);
+      }
+      throw err;
     }
-
-    if (res.status === 204) {
-      return {} as T;
-    }
-
-    return res.json();
   }
 
   // 1. Get all calendars
@@ -86,6 +102,11 @@ export class CalendarApiService {
       allItems = allItems.concat(items);
       pageToken = data.nextPageToken;
       pageCount++;
+
+      // Brief pause between paginated calls to respect Google burst limits
+      if (pageToken) {
+        await new Promise((r) => setTimeout(r, 60));
+      }
     } while (pageToken && pageCount < MAX_PAGES);
 
     return allItems.map((item: any) => {
