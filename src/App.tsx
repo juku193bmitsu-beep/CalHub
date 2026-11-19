@@ -59,9 +59,11 @@ export const CalHubApp: React.FC = () => {
   const [isSearchOpen, setIsSearchOpen] = useState(false);
   const [isArrowSettingsOpen, setIsArrowSettingsOpen] = useState(false);
   const [isYearMonthPickerOpen, setIsYearMonthPickerOpen] = useState(false);
+  const [flipDirection, setFlipDirection] = useState<'prev' | 'next' | null>(null);
 
-  // Navigations
+  // Navigations with page turn direction
   const handlePrev = () => {
+    setFlipDirection('prev');
     const d = new Date(currentDate);
     if (viewType === 'week' || viewType === 'timegrid') {
       d.setDate(d.getDate() - 7);
@@ -72,6 +74,7 @@ export const CalHubApp: React.FC = () => {
   };
 
   const handleNext = () => {
+    setFlipDirection('next');
     const d = new Date(currentDate);
     if (viewType === 'week' || viewType === 'timegrid') {
       d.setDate(d.getDate() + 7);
@@ -82,10 +85,12 @@ export const CalHubApp: React.FC = () => {
   };
 
   const handleToday = () => {
+    setFlipDirection(null);
     setCurrentDate(new Date());
   };
 
   const handleSelectYearMonth = (year: number, month: number) => {
+    setFlipDirection(null);
     const d = new Date(currentDate);
     // Keep day within bounds of the target month
     const maxDays = new Date(year, month, 0).getDate();
@@ -170,53 +175,64 @@ export const CalHubApp: React.FC = () => {
       {/* Auth Status & Reconnect Bar */}
       <AuthBar onTokenChange={setAuthToken} />
 
-      {/* Main View Area (Expanded vertical space without FilterBar) */}
+      {/* Main View Area with Smooth Page Turn Slide Animation */}
       <main className="flex-1 flex overflow-hidden relative">
-        {viewType === 'vertical' && (
-          <VerticalView
-            currentDate={currentDate}
-            onDateClick={handleDateClick}
-            onEventClick={handleEventClick}
-            onPrevMonth={handlePrev}
-            onNextMonth={handleNext}
-          />
-        )}
-        {viewType === 'month' && (
-          <MonthlyView
-            currentDate={currentDate}
-            onDateClick={handleDateClick}
-            onEventClick={handleEventClick}
-            onPrevMonth={handlePrev}
-            onNextMonth={handleNext}
-          />
-        )}
-        {viewType === 'timegrid' && (
-          <WeeklyTimeGridView
-            currentDate={currentDate}
-            onDateClick={handleDateClick}
-            onEventClick={handleEventClick}
-            onPrevWeek={handlePrev}
-            onNextWeek={handleNext}
-          />
-        )}
-        {viewType === 'week' && (
-          <WeeklyView
-            currentDate={currentDate}
-            onDateClick={handleDateClick}
-            onEventClick={handleEventClick}
-            onPrevWeek={handlePrev}
-            onNextWeek={handleNext}
-          />
-        )}
-        {viewType === 'compare' && (
-          <CompareView
-            currentDate={currentDate}
-            onDateClick={handleDateClick}
-            onEventClick={handleEventClick}
-            onPrevMonth={handlePrev}
-            onNextMonth={handleNext}
-          />
-        )}
+        <div
+          key={`${viewType}-${currentDate.getFullYear()}-${currentDate.getMonth()}-${viewType === 'week' || viewType === 'timegrid' ? currentDate.getDate() : ''}`}
+          className={`flex-1 flex flex-col h-full w-full overflow-hidden ${
+            flipDirection === 'next'
+              ? 'animate-page-turn-next'
+              : flipDirection === 'prev'
+              ? 'animate-page-turn-prev'
+              : ''
+          }`}
+        >
+          {viewType === 'vertical' && (
+            <VerticalView
+              currentDate={currentDate}
+              onDateClick={handleDateClick}
+              onEventClick={handleEventClick}
+              onPrevMonth={handlePrev}
+              onNextMonth={handleNext}
+            />
+          )}
+          {viewType === 'month' && (
+            <MonthlyView
+              currentDate={currentDate}
+              onDateClick={handleDateClick}
+              onEventClick={handleEventClick}
+              onPrevMonth={handlePrev}
+              onNextMonth={handleNext}
+            />
+          )}
+          {viewType === 'timegrid' && (
+            <WeeklyTimeGridView
+              currentDate={currentDate}
+              onDateClick={handleDateClick}
+              onEventClick={handleEventClick}
+              onPrevWeek={handlePrev}
+              onNextWeek={handleNext}
+            />
+          )}
+          {viewType === 'week' && (
+            <WeeklyView
+              currentDate={currentDate}
+              onDateClick={handleDateClick}
+              onEventClick={handleEventClick}
+              onPrevWeek={handlePrev}
+              onNextWeek={handleNext}
+            />
+          )}
+          {viewType === 'compare' && (
+            <CompareView
+              currentDate={currentDate}
+              onDateClick={handleDateClick}
+              onEventClick={handleEventClick}
+              onPrevMonth={handlePrev}
+              onNextMonth={handleNext}
+            />
+          )}
+        </div>
       </main>
 
       {/* Paste Notification Toast */}

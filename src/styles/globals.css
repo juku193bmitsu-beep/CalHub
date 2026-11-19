@@ -53,3 +53,34 @@
 .pb-safe {
   padding-bottom: max(12px, env(safe-area-inset-bottom, 0px));
 }
+
+/* Page flip transition animations */
+@keyframes pageTurnNext {
+  0% {
+    opacity: 0.65;
+    transform: translateX(40px) scale(0.99);
+  }
+  100% {
+    opacity: 1;
+    transform: translateX(0) scale(1);
+  }
+}
+
+@keyframes pageTurnPrev {
+  0% {
+    opacity: 0.65;
+    transform: translateX(-40px) scale(0.99);
+  }
+  100% {
+    opacity: 1;
+    transform: translateX(0) scale(1);
+  }
+}
+
+.animate-page-turn-next {
+  animation: pageTurnNext 0.24s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+.animate-page-turn-prev {
+  animation: pageTurnPrev 0.24s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}

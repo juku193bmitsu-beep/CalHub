@@ -121,8 +121,9 @@ export const EventChip: React.FC<EventChipProps> = ({
 
   const calendar = calendars.find((c) => c.id === event.calendarId);
   const rawColor = event.backgroundColor || calendar?.backgroundColor || '#039be5';
-  const bgColorLight = hexToRgba(rawColor, 0.12);
-  const borderColorLight = hexToRgba(rawColor, 0.28);
+  // Enhanced contrast for timed events: higher opacity & vivid border for mobile outdoor visibility
+  const bgColorLight = hexToRgba(rawColor, 0.22);
+  const borderColorLight = hexToRgba(rawColor, 0.55);
 
   return (
     <div
@@ -170,7 +171,7 @@ export const EventChip: React.FC<EventChipProps> = ({
           <span className="w-1.5 h-1.5 rounded-full bg-white/70 shrink-0" />
         ) : (
           <span
-            className="w-1.5 h-1.5 rounded-full shrink-0 shadow-2xs"
+            className="w-2 h-2 rounded-full shrink-0 shadow-xs ring-1 ring-black/10 dark:ring-white/20"
             style={{ backgroundColor: rawColor }}
           />
         )}

@@ -13,6 +13,8 @@ import {
   LogOut,
   HelpCircle,
   ExternalLink,
+  Sun,
+  Moon,
   Trash2,
   RotateCcw,
 } from 'lucide-react';
@@ -37,6 +39,8 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
     updateArrowSettings,
     authToken,
     setAuthToken,
+    theme,
+    toggleTheme,
   } = useCalendar();
 
   const { clearAllEvents, resetToMockEvents } = useEvents();
@@ -146,18 +150,38 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                 設定
               </h2>
               <p className="text-[11px] text-slate-500 dark:text-slate-400">
-                表示カテゴリー・Google連携・矢印デザイン
+                表示カテゴリー・Google連携・矢印デザイン・外観テーマ
               </p>
             </div>
           </div>
 
-          <button
-            onClick={onClose}
-            className="p-1.5 rounded-full text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-800 transition"
-            aria-label="閉じる"
-          >
-            <X className="w-5 h-5" />
-          </button>
+          <div className="flex items-center gap-1.5">
+            <button
+              onClick={toggleTheme}
+              className="flex items-center gap-1 px-2.5 py-1.5 rounded-xl bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-xs font-medium text-slate-700 dark:text-slate-200 transition active:scale-95 border border-slate-200/60 dark:border-slate-700 shadow-2xs"
+              title="ライト / ダークモード切り替え"
+            >
+              {theme === 'dark' ? (
+                <>
+                  <Sun className="w-3.5 h-3.5 text-amber-400" />
+                  <span>ライト</span>
+                </>
+              ) : (
+                <>
+                  <Moon className="w-3.5 h-3.5 text-slate-600" />
+                  <span>ダーク</span>
+                </>
+              )}
+            </button>
+
+            <button
+              onClick={onClose}
+              className="p-1.5 rounded-full text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-800 transition"
+              aria-label="閉じる"
+            >
+              <X className="w-5 h-5" />
+            </button>
+          </div>
         </div>
 
         {/* Tab Segmented Control (3 Tabs) */}

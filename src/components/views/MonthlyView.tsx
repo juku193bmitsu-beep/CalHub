@@ -285,16 +285,9 @@ export const MonthlyView: React.FC<MonthlyViewProps> = ({
                     );
                   }
 
-                  // Single-Day Timed Event Chip
-                  const bgColorLight = hexToRgba(rawColor, 0.12);
-                  const borderColorLight = hexToRgba(rawColor, 0.28);
-                  const timeText = event.start.dateTime
-                    ? new Date(event.start.dateTime).toLocaleTimeString('ja-JP', {
-                        hour: '2-digit',
-                        minute: '2-digit',
-                        hour12: false,
-                      })
-                    : '';
+                  // Single-Day Timed Event Chip (Higher contrast for visibility, time hidden as per user request to maximize title space)
+                  const bgColorLight = hexToRgba(rawColor, 0.22);
+                  const borderColorLight = hexToRgba(rawColor, 0.55);
 
                   return (
                     <div
@@ -323,11 +316,6 @@ export const MonthlyView: React.FC<MonthlyViewProps> = ({
                         className="w-1.5 h-1.5 rounded-full shrink-0 shadow-2xs"
                         style={{ backgroundColor: rawColor }}
                       />
-                      {timeText && (
-                        <span className="text-[9px] opacity-75 font-normal tabular-nums shrink-0">
-                          {timeText}
-                        </span>
-                      )}
                       <span className="truncate">{event.summary || '(予定なし)'}</span>
                     </div>
                   );
