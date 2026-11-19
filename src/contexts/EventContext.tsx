@@ -45,12 +45,22 @@ export const EventProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     return generateInitialMockEvents();
   });
 
-  // Save to localStorage whenever events change
+  // Save to localStorage whenever events change (with automatic safe fallback for large datasets)
   useEffect(() => {
     try {
       localStorage.setItem(STORAGE_KEY_EVENTS, JSON.stringify(events));
     } catch (e) {
-      console.error('Failed to save events to localStorage', e);
+      console.warn('Storage quota exceeded, caching recent 3 years to localStorage while keeping all in memory:', e);
+      try {
+        const cutoffYear = new Date().getFullYear() - 3;
+        const recentEvents = events.filter((ev) => {
+          const dateStr = ev.start.date || ev.start.dateTime;
+          return dateStr ? parseInt(dateStr.slice(0, 4), 10) >= cutoffYear : true;
+        });
+        localStorage.setItem(STORAGE_KEY_EVENTS, JSON.stringify(recentEvents));
+      } catch {
+        // Ignore if storage is completely full
+      }
     }
   }, [events]);
 
@@ -60,11 +70,11 @@ export const EventProvider: React.FC<{ children: React.ReactNode }> = ({ childre
 
     try {
       setIsSyncingEvents(true);
-      // Fetch multi-year range (Past 3 years to Future 3 years = 7 years total)
+      // Fetch custom range: Past 10 years to Future 1 year
       const now = new Date();
       const currentYear = now.getFullYear();
-      const timeMin = new Date(currentYear - 3, 0, 1).toISOString();
-      const timeMax = new Date(currentYear + 3, 11, 31, 23, 59, 59).toISOString();
+      const timeMin = new Date(currentYear - 10, 0, 1).toISOString();
+      const timeMax = new Date(currentYear + 1, 11, 31, 23, 59, 59).toISOString();
 
       const promises = Array.from(visibleCalendarIds).map((calId) => {
         const cal = calendars.find((c) => c.id === calId);
