@@ -1,4 +1,4 @@
-export type CalendarViewType = 'vertical' | 'month' | 'timegrid' | 'week' | 'compare';
+export type CalendarViewType = 'vertical' | 'month' | 'week' | 'compare';
 
 export interface ViewState {
   currentDate: Date;

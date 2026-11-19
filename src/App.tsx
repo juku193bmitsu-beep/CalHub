@@ -8,7 +8,6 @@ import { CopyStatusBar } from './components/common/CopyStatusBar';
 import { VerticalView } from './components/views/VerticalView';
 import { MonthlyView } from './components/views/MonthlyView';
 import { WeeklyView } from './components/views/WeeklyView';
-import { WeeklyTimeGridView } from './components/views/WeeklyTimeGridView';
 import { CompareView } from './components/views/CompareView';
 import { EventDetailModal } from './components/events/EventDetailModal';
 import { SearchModal } from './components/search/SearchModal';
@@ -45,7 +44,7 @@ export const CalHubApp: React.FC = () => {
   const [viewType, setViewType] = useState<CalendarViewType>(() => {
     try {
       const saved = localStorage.getItem(STORAGE_KEY_VIEW);
-      if (saved === 'vertical' || saved === 'month' || saved === 'timegrid' || saved === 'week' || saved === 'compare') {
+      if (saved === 'vertical' || saved === 'month' || saved === 'week' || saved === 'compare') {
         return saved;
       }
     } catch {
@@ -76,7 +75,7 @@ export const CalHubApp: React.FC = () => {
   // Navigations with page turn direction and safe month rollover
   const handlePrev = () => {
     setFlipDirection('prev');
-    if (viewType === 'week' || viewType === 'timegrid') {
+    if (viewType === 'week') {
       const d = new Date(currentDate);
       d.setDate(d.getDate() - 7);
       setCurrentDate(d);
@@ -87,7 +86,7 @@ export const CalHubApp: React.FC = () => {
 
   const handleNext = () => {
     setFlipDirection('next');
-    if (viewType === 'week' || viewType === 'timegrid') {
+    if (viewType === 'week') {
       const d = new Date(currentDate);
       d.setDate(d.getDate() + 7);
       setCurrentDate(d);
@@ -171,7 +170,7 @@ export const CalHubApp: React.FC = () => {
       {/* Main Calendar View Area (Top to Fill) */}
       <main className="flex-1 flex overflow-hidden relative pt-safe">
         <div
-          key={`${viewType}-${currentDate.getFullYear()}-${currentDate.getMonth()}-${viewType === 'week' || viewType === 'timegrid' ? currentDate.getDate() : ''}`}
+          key={`${viewType}-${currentDate.getFullYear()}-${currentDate.getMonth()}-${viewType === 'week' ? currentDate.getDate() : ''}`}
           className={`flex-1 flex flex-col h-full w-full overflow-hidden ${
             viewType !== 'month' && flipDirection === 'next'
               ? 'animate-page-turn-next'
@@ -196,15 +195,6 @@ export const CalHubApp: React.FC = () => {
               onEventClick={handleEventClick}
               onPrevMonth={handlePrev}
               onNextMonth={handleNext}
-            />
-          )}
-          {viewType === 'timegrid' && (
-            <WeeklyTimeGridView
-              currentDate={currentDate}
-              onDateClick={handleDateClick}
-              onEventClick={handleEventClick}
-              onPrevWeek={handlePrev}
-              onNextWeek={handleNext}
             />
           )}
           {viewType === 'week' && (

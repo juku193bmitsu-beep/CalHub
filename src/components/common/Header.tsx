@@ -9,7 +9,6 @@ import {
   Columns3,
   AlignJustify,
   Grid3X3,
-  CalendarRange,
   RefreshCw,
 } from 'lucide-react';
 import { CalendarViewType } from '../../types/view';
@@ -48,7 +47,6 @@ export const Header: React.FC<HeaderProps> = ({
   const viewOptions: { type: CalendarViewType; label: string; icon: React.ReactNode }[] = [
     { type: 'vertical', label: '縦型', icon: <AlignJustify className="w-3.5 h-3.5" /> },
     { type: 'month', label: '月間', icon: <Grid3X3 className="w-3.5 h-3.5" /> },
-    { type: 'timegrid', label: '週枠', icon: <CalendarRange className="w-3.5 h-3.5" /> },
     { type: 'week', label: '週間', icon: <CalendarIcon className="w-3.5 h-3.5" /> },
     { type: 'compare', label: '並列', icon: <Columns3 className="w-3.5 h-3.5" /> },
   ];
