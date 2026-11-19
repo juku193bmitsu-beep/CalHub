@@ -16,6 +16,7 @@ interface EventContextType {
   events: CalendarEvent[];
   filteredEvents: CalendarEvent[];
   isSyncingEvents: boolean;
+  isFetchingMonth: boolean;
   syncStatusMessage: string | null;
   eventStats: EventStats;
   addEvent: (event: Omit<CalendarEvent, 'id'>) => Promise<CalendarEvent>;
@@ -25,6 +26,7 @@ interface EventContextType {
   moveEventCalendar: (id: string, targetCalendarId: string) => Promise<void>;
   searchEvents: (query: string) => CalendarEvent[];
   getEventsForDate: (date: Date) => CalendarEvent[];
+  fetchEventsForMonth: (year: number, month: number, force?: boolean) => Promise<number>;
   refreshEvents: () => Promise<void>;
   clearAllEvents: () => void;
   resetToMockEvents: () => void;
@@ -37,8 +39,10 @@ const STORAGE_KEY_EVENTS = 'calhub_events_v2';
 export const EventProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const { visibleCalendarIds, authToken, calendars, setAuthToken } = useCalendar();
   const [isSyncingEvents, setIsSyncingEvents] = useState<boolean>(false);
+  const [isFetchingMonth, setIsFetchingMonth] = useState<boolean>(false);
   const [syncStatusMessage, setSyncStatusMessage] = useState<string | null>(null);
   const isSyncingRef = useRef<boolean>(false);
+  const fetchedMonthsRef = useRef<Set<string>>(new Set());
 
   // Load from localStorage or initialize with mock data
   const [events, setEvents] = useState<CalendarEvent[]>(() => {
@@ -118,8 +122,79 @@ export const EventProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     };
   }, [events]);
 
+  // On-demand fetch for viewed month window (1 month before to 1 month after, 3 months total)
+  // Ensures whenever the user views ANY past or future month, events load immediately in real-time!
+  const fetchEventsForMonth = useCallback(
+    async (year: number, month: number, force: boolean = false): Promise<number> => {
+      const monthKey = `${year}-${String(month).padStart(2, '0')}`;
+      if (!authToken || visibleCalendarIds.size === 0) return 0;
+      if (!force && fetchedMonthsRef.current.has(monthKey)) return 0;
+
+      try {
+        setIsFetchingMonth(true);
+        // 3-month window centered on target month to safely capture multi-day events
+        const rangeStart = new Date(year, month - 2, 1);
+        const rangeEnd = new Date(year, month + 1, 0, 23, 59, 59);
+
+        const timeMin = rangeStart.toISOString();
+        const timeMax = rangeEnd.toISOString();
+
+        const activeCalList = Array.from(visibleCalendarIds).map((calId) => ({
+          id: calId,
+          color: calendars.find((c) => c.id === calId)?.backgroundColor,
+        }));
+
+        let newEventsCount = 0;
+        const allFetched: CalendarEvent[] = [];
+
+        for (const cal of activeCalList) {
+          try {
+            const calEvents = await CalendarApiService.listEvents(
+              authToken,
+              cal.id,
+              timeMin,
+              timeMax,
+              undefined,
+              cal.color
+            );
+            if (calEvents.length > 0) {
+              allFetched.push(...calEvents);
+            }
+          } catch (err: any) {
+            console.warn(`[fetchEventsForMonth] Failed for cal ${cal.id} in ${monthKey}:`, err);
+          }
+        }
+
+        if (allFetched.length > 0) {
+          setEvents((prev) => {
+            const map = new Map<string, CalendarEvent>();
+            prev.forEach((ev) => map.set(ev.id, ev));
+            let added = 0;
+            allFetched.forEach((ev) => {
+              if (!map.has(ev.id)) added++;
+              map.set(ev.id, ev);
+            });
+            newEventsCount = added;
+            const merged = Array.from(map.values());
+            saveEventsToDb(merged);
+            return merged;
+          });
+        }
+
+        fetchedMonthsRef.current.add(monthKey);
+        return newEventsCount;
+      } catch (err) {
+        console.error(`[fetchEventsForMonth] Error for ${monthKey}:`, err);
+        return 0;
+      } finally {
+        setIsFetchingMonth(false);
+      }
+    },
+    [authToken, visibleCalendarIds, calendars]
+  );
+
   // Sync events from Google Calendar API in sequential polite slices
-  // Slice 1: Future 1 Year (From 1st of current month up to end of next year: e.g. 2026-11 to 2027-12-31)
+  // Slice 1: Current & Future 3 Years (Strictly prioritized from current month to end of 3 years future: e.g. 2026-11 to 2029-12-31)
   // Slice 2: Recent Past 1-3 Years
   // Slice 3: Mid Past 4-6 Years
   // Slice 4: Deep Past 7-10 Years
@@ -147,25 +222,25 @@ export const EventProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       }
 
       const slices: TimeSlice[] = [
-        // 1. Current & Future 1 Year (Strictly prioritized from current month to end of next year: e.g. 2026-11 to 2027-12-31)
+        // 1. Current & Future 3 Years (Covers all future planning)
         {
-          name: `未来1年（今月〜${currentYear + 1}年末）`,
+          name: `現在〜未来3年（${currentYear}〜${currentYear + 3}年）`,
           timeMin: startOfCurrentMonth.toISOString(),
-          timeMax: new Date(currentYear + 1, 11, 31, 23, 59, 59).toISOString(),
+          timeMax: new Date(currentYear + 3, 11, 31, 23, 59, 59).toISOString(),
         },
-        // 2. Recent Past (Past 1 to 3 years back from current month)
+        // 2. Recent Past (Past 1 to 3 years: 2023〜2026)
         {
-          name: `過去1〜3年（${currentYear - 3}年〜今月）`,
+          name: `過去1〜3年（${currentYear - 3}〜${currentYear}年）`,
           timeMin: new Date(currentYear - 3, 0, 1).toISOString(),
           timeMax: startOfCurrentMonth.toISOString(),
         },
-        // 3. Mid Past (Past 4 to 6 years)
+        // 3. Mid Past (Past 4 to 6 years: 2020〜2023)
         {
           name: `過去4〜6年（${currentYear - 6}〜${currentYear - 3}年）`,
           timeMin: new Date(currentYear - 6, 0, 1).toISOString(),
           timeMax: new Date(currentYear - 3, 0, 1).toISOString(),
         },
-        // 4. Deep Past (Past 7 to 10 years)
+        // 4. Deep Past (Past 7 to 10 years: 2016〜2020)
         {
           name: `過去7〜10年（${currentYear - 10}〜${currentYear - 6}年）`,
           timeMin: new Date(currentYear - 10, 0, 1).toISOString(),
@@ -227,7 +302,7 @@ export const EventProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         await new Promise((r) => setTimeout(r, 100));
       }
 
-      setSyncStatusMessage(`同期完了: 過去10年〜未来1年（計 ${totalSyncedCount} 件）`);
+      setSyncStatusMessage(`同期完了: 過去10年〜未来3年（計 ${totalSyncedCount} 件）`);
       setTimeout(() => setSyncStatusMessage(null), 3500);
     } catch (err: any) {
       console.error('Error syncing events from Google:', err);
@@ -443,6 +518,7 @@ export const EventProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         events,
         filteredEvents,
         isSyncingEvents,
+        isFetchingMonth,
         syncStatusMessage,
         eventStats,
         addEvent,
@@ -452,6 +528,7 @@ export const EventProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         moveEventCalendar,
         searchEvents,
         getEventsForDate,
+        fetchEventsForMonth,
         refreshEvents,
         clearAllEvents,
         resetToMockEvents,

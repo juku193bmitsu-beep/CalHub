@@ -10,6 +10,7 @@ import {
   AlignJustify,
   Grid3X3,
   CalendarRange,
+  RefreshCw,
 } from 'lucide-react';
 import { CalendarViewType } from '../../types/view';
 
@@ -23,6 +24,7 @@ interface HeaderProps {
   onOpenSearch: () => void;
   onOpenArrowSettings: () => void;
   onOpenYearMonthPicker?: () => void;
+  isFetchingMonth?: boolean;
 }
 
 export const Header: React.FC<HeaderProps> = ({
@@ -35,6 +37,7 @@ export const Header: React.FC<HeaderProps> = ({
   onOpenSearch,
   onOpenArrowSettings,
   onOpenYearMonthPicker,
+  isFetchingMonth = false,
 }) => {
   const [isViewMenuOpen, setIsViewMenuOpen] = useState(false);
   const viewMenuRef = useRef<HTMLDivElement | null>(null);
@@ -86,8 +89,11 @@ export const Header: React.FC<HeaderProps> = ({
             className="px-1.5 sm:px-2 py-0.5 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 transition active:scale-95 cursor-pointer text-center"
             title="タップして年月をドラムロールで選択"
           >
-            <h1 className="text-sm sm:text-lg font-bold tracking-tight text-slate-900 dark:text-white tabular-nums whitespace-nowrap">
-              {year}年{month}月
+            <h1 className="text-sm sm:text-lg font-bold tracking-tight text-slate-900 dark:text-white tabular-nums whitespace-nowrap flex items-center gap-1">
+              <span>{year}年{month}月</span>
+              {isFetchingMonth && (
+                <RefreshCw className="w-3 h-3 text-blue-500 animate-spin shrink-0" />
+              )}
             </h1>
           </button>
 

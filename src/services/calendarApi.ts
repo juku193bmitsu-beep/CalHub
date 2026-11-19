@@ -69,7 +69,7 @@ export class CalendarApiService {
     }));
   }
 
-  // 2. Fetch events in date range (supports multi-year range & automatic pagination)
+  // 2. Fetch events in date range (supports multi-year range & robust pagination)
   public static async listEvents(
     token: string,
     calendarId: string,
@@ -82,33 +82,41 @@ export class CalendarApiService {
     let allItems: any[] = [];
     let pageToken: string | undefined = undefined;
     let pageCount = 0;
-    const MAX_PAGES = 100; // Supports up to 25,000 events per slice without truncating future events
+    const MAX_PAGES = 50; // Google allows up to 2500 per page -> 50 pages = up to 125,000 events
 
     do {
-      const params = new URLSearchParams({
-        singleEvents: 'true',
-        orderBy: 'startTime',
-        maxResults: '250',
-      });
+      try {
+        const params = new URLSearchParams();
+        if (pageToken) {
+          // Google Calendar API: when pageToken is passed, pass only pageToken to avoid parameter conflicts
+          params.set('pageToken', pageToken);
+        } else {
+          params.set('singleEvents', 'true');
+          params.set('orderBy', 'startTime');
+          params.set('maxResults', '2500'); // Maximum allowed by Google Calendar API (10x faster than 250)
+          if (timeMin) params.set('timeMin', timeMin);
+          if (timeMax) params.set('timeMax', timeMax);
+          if (query) params.set('q', query);
+        }
 
-      if (timeMin) params.set('timeMin', timeMin);
-      if (timeMax) params.set('timeMax', timeMax);
-      if (query) params.set('q', query);
-      if (pageToken) params.set('pageToken', pageToken);
+        const data = await this.request<any>(
+          `/calendars/${encodedCalId}/events?${params.toString()}`,
+          token
+        );
 
-      const data = await this.request<any>(
-        `/calendars/${encodedCalId}/events?${params.toString()}`,
-        token
-      );
+        const items = data.items || [];
+        allItems = allItems.concat(items);
+        pageToken = data.nextPageToken;
+        pageCount++;
 
-      const items = data.items || [];
-      allItems = allItems.concat(items);
-      pageToken = data.nextPageToken;
-      pageCount++;
-
-      // Brief pause between paginated calls to respect Google burst limits
-      if (pageToken) {
-        await new Promise((r) => setTimeout(r, 60));
+        // Brief pause between paginated calls to respect Google burst limits
+        if (pageToken) {
+          await new Promise((r) => setTimeout(r, 60));
+        }
+      } catch (err: any) {
+        console.warn(`[CalendarApiService] Failed fetching page ${pageCount + 1} for ${calendarId}:`, err);
+        // Break out of pagination loop but preserve already accumulated allItems
+        break;
       }
     } while (pageToken && pageCount < MAX_PAGES);
 

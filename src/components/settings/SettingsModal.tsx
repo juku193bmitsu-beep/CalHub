@@ -350,33 +350,39 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                 </div>
 
                 {/* Stored Events Statistics & Resync Action */}
-                <div className="pt-2 border-t border-slate-200/80 dark:border-slate-800/80 flex items-center justify-between">
-                  <div className="text-[11px] text-slate-600 dark:text-slate-300">
-                    <span className="font-semibold">端末内キャッシュ: </span>
-                    <span className="font-bold text-blue-600 dark:text-blue-400">
-                      {eventStats.total.toLocaleString()} 件
-                    </span>
-                    {eventStats.minYear && eventStats.maxYear && (
-                      <span className="text-slate-500 dark:text-slate-400 ml-1">
-                        ({eventStats.minYear}年〜{eventStats.maxYear}年)
+                <div className="pt-2 border-t border-slate-200/80 dark:border-slate-800/80 flex flex-col gap-2">
+                  <div className="flex items-center justify-between">
+                    <div className="text-[11px] text-slate-600 dark:text-slate-300">
+                      <span className="font-semibold">端末内キャッシュ: </span>
+                      <span className="font-bold text-blue-600 dark:text-blue-400">
+                        {eventStats.total.toLocaleString()} 件
                       </span>
+                      {eventStats.minYear && eventStats.maxYear && (
+                        <span className="text-slate-500 dark:text-slate-400 ml-1">
+                          ({eventStats.minYear}年〜{eventStats.maxYear}年)
+                        </span>
+                      )}
+                    </div>
+
+                    {authToken && (
+                      <button
+                        type="button"
+                        disabled={isSyncingEvents}
+                        onClick={() => {
+                          refreshEvents();
+                          onClose();
+                        }}
+                        className="px-3 py-1.5 rounded-xl bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white text-xs font-semibold flex items-center gap-1.5 transition active:scale-95 shadow-xs shrink-0 cursor-pointer"
+                      >
+                        <RotateCcw className={`w-3.5 h-3.5 ${isSyncingEvents ? 'animate-spin' : ''}`} />
+                        <span>{isSyncingEvents ? '全期間同期中...' : '過去10年〜未来3年を一括同期'}</span>
+                      </button>
                     )}
                   </div>
 
-                  {authToken && (
-                    <button
-                      type="button"
-                      disabled={isSyncingEvents}
-                      onClick={() => {
-                        refreshEvents();
-                        onClose();
-                      }}
-                      className="px-3 py-1 rounded-xl bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white text-xs font-semibold flex items-center gap-1.5 transition active:scale-95 shadow-xs shrink-0"
-                    >
-                      <RotateCcw className={`w-3.5 h-3.5 ${isSyncingEvents ? 'animate-spin' : ''}`} />
-                      <span>{isSyncingEvents ? '同期中...' : '全期間を再同期'}</span>
-                    </button>
-                  )}
+                  <p className="text-[10px] text-slate-400 dark:text-slate-500 leading-relaxed">
+                    💡 カレンダーをめくると、その年月の予定は自動的にバックグラウンドで即時取得されます。オフラインでも過去・未来の全予定を見たい場合は「一括同期」を実行してください。
+                  </p>
                 </div>
               </div>
 

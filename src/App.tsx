@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { CalendarProvider, useCalendar } from './contexts/CalendarContext';
 import { EventProvider, useEvents } from './contexts/EventContext';
 import { ClipboardProvider, useClipboard } from './contexts/ClipboardContext';
@@ -23,11 +23,23 @@ const STORAGE_KEY_VIEW = 'calhub_view_type_v1';
 
 export const CalHubApp: React.FC = () => {
   const { setAuthToken } = useCalendar();
-  const { addEvent, syncStatusMessage, isSyncingEvents } = useEvents();
+  const {
+    addEvent,
+    syncStatusMessage,
+    isSyncingEvents,
+    isFetchingMonth,
+    fetchEventsForMonth,
+  } = useEvents();
   const { copiedEvent, copyToastMessage } = useClipboard();
 
   const [currentDate, setCurrentDate] = useState<Date>(new Date());
   const [pasteToast, setPasteToast] = useState<string | null>(null);
+
+  // Automatically fetch events on-demand for whatever month the user is currently looking at!
+  // Guarantees past 10 years and future years always load and never show blank.
+  useEffect(() => {
+    fetchEventsForMonth(currentDate.getFullYear(), currentDate.getMonth() + 1);
+  }, [currentDate, fetchEventsForMonth]);
 
   // Persist view type preference in localStorage
   const [viewType, setViewType] = useState<CalendarViewType>(() => {
@@ -230,18 +242,21 @@ export const CalHubApp: React.FC = () => {
         onOpenSearch={() => setIsSearchOpen(true)}
         onOpenArrowSettings={() => setIsArrowSettingsOpen(true)}
         onOpenYearMonthPicker={() => setIsYearMonthPickerOpen(true)}
+        isFetchingMonth={isFetchingMonth}
       />
 
-      {/* Sync Status Toast / Indicator */}
-      {syncStatusMessage && (
+      {/* Sync Status Toast / Indicator (Foreground & Background sync) */}
+      {(syncStatusMessage || isFetchingMonth) && (
         <div className="fixed top-4 inset-x-0 z-50 flex justify-center pointer-events-none animate-in fade-in slide-in-from-top-2 duration-150">
           <div className="bg-slate-900/95 text-white dark:bg-slate-800/95 px-4 py-2 rounded-2xl shadow-xl flex items-center gap-2.5 text-xs font-semibold backdrop-blur-md border border-slate-700/80 max-w-sm">
-            {isSyncingEvents ? (
+            {isSyncingEvents || isFetchingMonth ? (
               <RefreshCw className="w-4 h-4 text-blue-400 animate-spin shrink-0" />
             ) : (
               <Check className="w-4 h-4 text-emerald-400 shrink-0" />
             )}
-            <span className="truncate">{syncStatusMessage}</span>
+            <span className="truncate">
+              {syncStatusMessage || `${currentDate.getFullYear()}年${currentDate.getMonth() + 1}月の予定を読み込み中...`}
+            </span>
           </div>
         </div>
       )}
