@@ -6,7 +6,12 @@ import { useClipboard } from '../../contexts/ClipboardContext';
 import { parseLinksInText } from '../../services/urlParser';
 import { getJapaneseHoliday } from '../../constants/holidays';
 import { DrumTimePicker } from '../pickers/DrumTimePicker';
-import { formatLocalDate, isEventOnDate } from '../../services/dateUtils';
+import {
+  formatLocalDate,
+  isEventOnDate,
+  getEventStartDateStr,
+  getEventEndDateInclusiveStr,
+} from '../../services/dateUtils';
 import { triggerHaptic } from '../../services/gestureUtils';
 import {
   X,
@@ -21,6 +26,7 @@ import {
   Edit3,
   Copy,
   Check,
+  Calendar,
 } from 'lucide-react';
 
 interface EventDetailModalProps {
@@ -72,6 +78,8 @@ export const EventDetailModal: React.FC<EventDetailModalProps> = ({
   const [formDescription, setFormDescription] = useState('');
   const [formCalendarId, setFormCalendarId] = useState('primary');
   const [formIsAllDay, setFormIsAllDay] = useState(false);
+  const [formStartDate, setFormStartDate] = useState(() => formatLocalDate(initialDate || new Date()));
+  const [formEndDate, setFormEndDate] = useState(() => formatLocalDate(initialDate || new Date()));
   const [startHour, setStartHour] = useState(10);
   const [startMinute, setStartMinute] = useState(0);
   const [endHour, setEndHour] = useState(11);
@@ -111,6 +119,11 @@ export const EventDetailModal: React.FC<EventDetailModalProps> = ({
     setFormCalendarId(ev.calendarId);
     setFormIsAllDay(!!ev.isAllDay || !!ev.start.date);
 
+    const sDateStr = getEventStartDateStr(ev) || formatLocalDate(currentDate);
+    const eDateStr = getEventEndDateInclusiveStr(ev) || sDateStr;
+    setFormStartDate(sDateStr);
+    setFormEndDate(eDateStr);
+
     if (ev.start.dateTime) {
       const s = new Date(ev.start.dateTime);
       setStartHour(s.getHours());
@@ -138,40 +151,62 @@ export const EventDetailModal: React.FC<EventDetailModalProps> = ({
     setFormDescription('');
     setFormCalendarId(calendars[0]?.id || 'primary');
     setFormIsAllDay(false);
+    const curDateStr = formatLocalDate(currentDate);
+    setFormStartDate(curDateStr);
+    setFormEndDate(curDateStr);
     setStartHour(10);
     setStartMinute(0);
     setEndHour(11);
     setEndMinute(0);
   };
 
-  // Rule: changing start time auto-shifts end time to keep duration
-  const handleStartTimeChange = (newH: number, newM: number) => {
-    const oldDurationMin = (endHour * 60 + endMinute) - (startHour * 60 + startMinute);
-    const validDuration = oldDurationMin > 0 ? oldDurationMin : 60;
+  const handleStartDateChange = (newDateStr: string) => {
+    setFormStartDate(newDateStr);
+    if (newDateStr > formEndDate) {
+      setFormEndDate(newDateStr);
+    }
+  };
 
+  const handleEndDateChange = (newDateStr: string) => {
+    setFormEndDate(newDateStr);
+    if (newDateStr < formStartDate) {
+      setFormStartDate(newDateStr);
+    }
+  };
+
+  // Rule: changing start time auto-shifts end time to keep duration if on same day
+  const handleStartTimeChange = (newH: number, newM: number) => {
     setStartHour(newH);
     setStartMinute(newM);
 
-    const newEndTotal = newH * 60 + newM + validDuration;
-    if (newEndTotal >= 24 * 60) {
-      // Cap at 23:55
-      setEndHour(23);
-      setEndMinute(55);
-    } else {
-      setEndHour(Math.floor(newEndTotal / 60));
-      setEndMinute(newEndTotal % 60);
+    if (formStartDate === formEndDate) {
+      const oldDurationMin = (endHour * 60 + endMinute) - (startHour * 60 + startMinute);
+      const validDuration = oldDurationMin > 0 ? oldDurationMin : 60;
+      const newEndTotal = newH * 60 + newM + validDuration;
+      if (newEndTotal >= 24 * 60) {
+        setEndHour(23);
+        setEndMinute(55);
+      } else {
+        setEndHour(Math.floor(newEndTotal / 60));
+        setEndMinute(newEndTotal % 60);
+      }
     }
   };
 
   const handleEndTimeChange = (newH: number, newM: number) => {
-    const startTotal = startHour * 60 + startMinute;
-    const endTotal = newH * 60 + newM;
+    if (formStartDate === formEndDate) {
+      const startTotal = startHour * 60 + startMinute;
+      const endTotal = newH * 60 + newM;
 
-    if (endTotal <= startTotal) {
-      // Must be at least 15 min after start
-      const adjusted = Math.min(23 * 60 + 55, startTotal + 15);
-      setEndHour(Math.floor(adjusted / 60));
-      setEndMinute(adjusted % 60);
+      if (endTotal <= startTotal) {
+        // Must be at least 15 min after start
+        const adjusted = Math.min(23 * 60 + 55, startTotal + 15);
+        setEndHour(Math.floor(adjusted / 60));
+        setEndMinute(adjusted % 60);
+      } else {
+        setEndHour(newH);
+        setEndMinute(newM);
+      }
     } else {
       setEndHour(newH);
       setEndMinute(newM);
@@ -211,17 +246,24 @@ export const EventDetailModal: React.FC<EventDetailModalProps> = ({
     let startObj, endObj;
     if (formIsAllDay) {
       // For all-day event in Google Calendar API format
-      const [y, m, d] = dateStr.split('-').map(Number);
-      const nextDay = new Date(y, m - 1, d + 1);
+      // end.date is exclusive (day after the last day)
+      const [ey, em, ed] = formEndDate.split('-').map(Number);
+      const nextDay = new Date(ey, em - 1, ed + 1);
       const nextDayStr = formatLocalDate(nextDay);
 
-      startObj = { date: dateStr };
+      startObj = { date: formStartDate };
       endObj = { date: nextDayStr }; // Exclusive end date for API compatibility
     } else {
-      const sDate = new Date(currentDate);
-      sDate.setHours(startHour, startMinute, 0, 0);
-      const eDate = new Date(currentDate);
-      eDate.setHours(endHour, endMinute, 0, 0);
+      const [sy, sm, sd] = formStartDate.split('-').map(Number);
+      const sDate = new Date(sy, sm - 1, sd, startHour, startMinute, 0, 0);
+
+      const [ey, em, ed] = formEndDate.split('-').map(Number);
+      const eDate = new Date(ey, em - 1, ed, endHour, endMinute, 0, 0);
+
+      // Guard: if end datetime is before or equal to start datetime, adjust to at least 15 mins after
+      if (eDate.getTime() <= sDate.getTime()) {
+        eDate.setTime(sDate.getTime() + 15 * 60 * 1000);
+      }
 
       startObj = { dateTime: sDate.toISOString() };
       endObj = { dateTime: eDate.toISOString() };
@@ -434,34 +476,66 @@ export const EventDetailModal: React.FC<EventDetailModalProps> = ({
                 />
               </div>
 
-              {/* 24h Drum Time Pickers (if not all day) */}
-              {!formIsAllDay && (
-                <div className="space-y-3 pt-0.5">
-                  <div>
-                    <label className="text-xs font-semibold text-slate-600 dark:text-slate-300 block mb-1 flex items-center gap-1">
-                      <Clock className="w-3.5 h-3.5 text-blue-500" />
-                      開始時刻
-                    </label>
+              {/* Start Date & Time Section */}
+              <div className="p-3 rounded-2xl bg-slate-50 dark:bg-slate-800/50 border border-slate-200/80 dark:border-slate-700/80 space-y-2.5">
+                <div className="flex items-center justify-between gap-2">
+                  <span className="text-xs font-bold text-slate-700 dark:text-slate-200 flex items-center gap-1.5">
+                    <Calendar className="w-3.5 h-3.5 text-blue-500" />
+                    開始
+                  </span>
+                  <input
+                    type="date"
+                    required
+                    value={formStartDate}
+                    onChange={(e) => handleStartDateChange(e.target.value)}
+                    className="px-2.5 py-1 text-xs font-semibold rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  />
+                </div>
+                {!formIsAllDay && (
+                  <div className="pt-2 border-t border-slate-200/60 dark:border-slate-700/60">
+                    <div className="text-[11px] font-semibold text-slate-500 dark:text-slate-400 mb-1 flex items-center gap-1">
+                      <Clock className="w-3 h-3 text-blue-500" />
+                      <span>時刻</span>
+                    </div>
                     <DrumTimePicker
                       hour={startHour}
                       minute={startMinute}
                       onChange={handleStartTimeChange}
                     />
                   </div>
+                )}
+              </div>
 
-                  <div>
-                    <label className="text-xs font-semibold text-slate-600 dark:text-slate-300 block mb-1 flex items-center gap-1">
-                      <Clock className="w-3.5 h-3.5 text-slate-400" />
-                      終了時刻
-                    </label>
+              {/* End Date & Time Section */}
+              <div className="p-3 rounded-2xl bg-slate-50 dark:bg-slate-800/50 border border-slate-200/80 dark:border-slate-700/80 space-y-2.5">
+                <div className="flex items-center justify-between gap-2">
+                  <span className="text-xs font-bold text-slate-700 dark:text-slate-200 flex items-center gap-1.5">
+                    <Calendar className="w-3.5 h-3.5 text-slate-400" />
+                    終了
+                  </span>
+                  <input
+                    type="date"
+                    required
+                    value={formEndDate}
+                    min={formStartDate}
+                    onChange={(e) => handleEndDateChange(e.target.value)}
+                    className="px-2.5 py-1 text-xs font-semibold rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  />
+                </div>
+                {!formIsAllDay && (
+                  <div className="pt-2 border-t border-slate-200/60 dark:border-slate-700/60">
+                    <div className="text-[11px] font-semibold text-slate-500 dark:text-slate-400 mb-1 flex items-center gap-1">
+                      <Clock className="w-3 h-3 text-slate-400" />
+                      <span>時刻</span>
+                    </div>
                     <DrumTimePicker
                       hour={endHour}
                       minute={endMinute}
                       onChange={handleEndTimeChange}
                     />
                   </div>
-                </div>
-              )}
+                )}
+              </div>
 
               {/* Location */}
               <div>
@@ -592,21 +666,44 @@ export const EventDetailModal: React.FC<EventDetailModalProps> = ({
                         </div>
                       </div>
 
-                      {/* Time */}
+                      {/* Time / Date Range */}
                       <div className="text-xs text-slate-500 dark:text-slate-400 flex items-center gap-1.5 tabular-nums">
-                        <Clock className="w-3.5 h-3.5" />
+                        <Clock className="w-3.5 h-3.5 shrink-0" />
                         <span>
-                          {ev.isAllDay || !ev.start.dateTime
-                            ? '終日'
-                            : `${new Date(ev.start.dateTime).toLocaleTimeString('ja-JP', {
-                                hour: '2-digit',
-                                minute: '2-digit',
-                                hour12: false,
-                              })} - ${new Date(ev.end.dateTime || '').toLocaleTimeString('ja-JP', {
-                                hour: '2-digit',
-                                minute: '2-digit',
-                                hour12: false,
-                              })}`}
+                          {(() => {
+                            const sStr = getEventStartDateStr(ev);
+                            const eStr = getEventEndDateInclusiveStr(ev);
+                            const isMulti = sStr && eStr && sStr !== eStr;
+                            const isAllDay = !!ev.isAllDay || !ev.start.dateTime;
+
+                            const formatMD = (str: string) => {
+                              const [, m, d] = str.split('-').map(Number);
+                              return `${m}/${d}`;
+                            };
+
+                            if (isAllDay) {
+                              return isMulti
+                                ? `${formatMD(sStr)} 〜 ${formatMD(eStr)}（終日）`
+                                : '終日';
+                            }
+
+                            const sDate = new Date(ev.start.dateTime!);
+                            const eDate = new Date(ev.end.dateTime || ev.start.dateTime!);
+                            const sTimeStr = sDate.toLocaleTimeString('ja-JP', {
+                              hour: '2-digit',
+                              minute: '2-digit',
+                              hour12: false,
+                            });
+                            const eTimeStr = eDate.toLocaleTimeString('ja-JP', {
+                              hour: '2-digit',
+                              minute: '2-digit',
+                              hour12: false,
+                            });
+
+                            return isMulti
+                              ? `${formatMD(sStr)} ${sTimeStr} 〜 ${formatMD(eStr)} ${eTimeStr}`
+                              : `${sTimeStr} - ${eTimeStr}`;
+                          })()}
                         </span>
                       </div>
 
