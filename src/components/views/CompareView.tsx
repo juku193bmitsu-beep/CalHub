@@ -4,21 +4,31 @@ import { useEvents } from '../../contexts/EventContext';
 import { CalendarEvent } from '../../types/calendar';
 import { EventChip } from '../events/EventChip';
 import { formatLocalDate, isEventOnDate } from '../../services/dateUtils';
+import { useSwipeNavigation } from '../../hooks/useSwipeNavigation';
 
 interface CompareViewProps {
   currentDate: Date;
   onDateClick: (date: Date) => void;
   onEventClick: (event: CalendarEvent) => void;
+  onPrevMonth: () => void;
+  onNextMonth: () => void;
 }
 
 export const CompareView: React.FC<CompareViewProps> = ({
   currentDate,
   onDateClick,
   onEventClick,
+  onPrevMonth,
+  onNextMonth,
 }) => {
   const { calendars, visibleCalendarIds } = useCalendar();
   const { filteredEvents, moveEventCalendar, moveEventDate } = useEvents();
   const [draggedEventId, setDraggedEventId] = useState<string | null>(null);
+
+  const { onTouchStart, onTouchMove, onTouchEnd } = useSwipeNavigation({
+    onSwipeLeft: onNextMonth,
+    onSwipeRight: onPrevMonth,
+  });
 
   // Active calendars to compare
   const activeCalendars = calendars.filter((c) => visibleCalendarIds.has(c.id));
@@ -49,7 +59,12 @@ export const CompareView: React.FC<CompareViewProps> = ({
   };
 
   return (
-    <div className="flex-1 flex flex-col h-full w-full select-none bg-white dark:bg-slate-900 overflow-hidden">
+    <div
+      onTouchStart={onTouchStart}
+      onTouchMove={onTouchMove}
+      onTouchEnd={onTouchEnd}
+      className="flex-1 flex flex-col h-full w-full select-none bg-white dark:bg-slate-900 overflow-hidden"
+    >
       {/* Column Headers for each active calendar */}
       <div className="flex border-b border-slate-200/80 dark:border-slate-800 bg-slate-50 dark:bg-slate-950/50 shrink-0">
         <div className="w-14 shrink-0 py-2 text-center text-xs font-semibold text-slate-500 dark:text-slate-400 border-r border-slate-200/60 dark:border-slate-800">

@@ -64,8 +64,8 @@ export const VerticalView: React.FC<VerticalViewProps> = ({
     initialZoom: 1.0,
   });
 
-  // Swipe for month change (only when not zoomed or near edges)
-  const { onTouchStart, onTouchEnd } = useSwipeNavigation({
+  // Swipe for month change (with strict direction locking & safeguards)
+  const { onTouchStart, onTouchMove, onTouchEnd } = useSwipeNavigation({
     onSwipeLeft: onNextMonth,
     onSwipeRight: onPrevMonth,
     disabled: zoom > 1.2, // Lock horizontal swipe when zoomed in to avoid accidental flips
@@ -92,6 +92,7 @@ export const VerticalView: React.FC<VerticalViewProps> = ({
         pinchRef.current = el;
       }}
       onTouchStart={onTouchStart}
+      onTouchMove={onTouchMove}
       onTouchEnd={onTouchEnd}
       className="relative flex-1 w-full h-full overflow-y-auto overflow-x-hidden select-none bg-white dark:bg-slate-900"
     >

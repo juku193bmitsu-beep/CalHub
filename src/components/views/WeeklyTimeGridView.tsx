@@ -26,7 +26,7 @@ export const WeeklyTimeGridView: React.FC<WeeklyTimeGridViewProps> = ({
   const { filteredEvents, moveEventDate, updateEvent } = useEvents();
   const scrollContainerRef = useRef<HTMLDivElement | null>(null);
 
-  const { onTouchStart, onTouchEnd } = useSwipeNavigation({
+  const { onTouchStart, onTouchMove, onTouchEnd } = useSwipeNavigation({
     onSwipeLeft: onNextWeek,
     onSwipeRight: onPrevWeek,
   });
@@ -146,6 +146,7 @@ export const WeeklyTimeGridView: React.FC<WeeklyTimeGridViewProps> = ({
   return (
     <div
       onTouchStart={onTouchStart}
+      onTouchMove={onTouchMove}
       onTouchEnd={onTouchEnd}
       className="flex-1 flex flex-col h-full w-full select-none bg-white dark:bg-slate-900 overflow-hidden"
     >

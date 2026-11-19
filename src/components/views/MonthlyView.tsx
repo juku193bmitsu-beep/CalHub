@@ -26,7 +26,7 @@ export const MonthlyView: React.FC<MonthlyViewProps> = ({
   const { filteredEvents, moveEventDate } = useEvents();
   const [dragOverDateStr, setDragOverDateStr] = useState<string | null>(null);
 
-  const { onTouchStart, onTouchEnd } = useSwipeNavigation({
+  const { onTouchStart, onTouchMove, onTouchEnd } = useSwipeNavigation({
     onSwipeLeft: onNextMonth,
     onSwipeRight: onPrevMonth,
   });
@@ -114,6 +114,7 @@ export const MonthlyView: React.FC<MonthlyViewProps> = ({
   return (
     <div
       onTouchStart={onTouchStart}
+      onTouchMove={onTouchMove}
       onTouchEnd={onTouchEnd}
       className="flex-1 flex flex-col h-full w-full select-none bg-slate-50 dark:bg-slate-900 overflow-hidden"
     >

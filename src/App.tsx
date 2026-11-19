@@ -213,6 +213,8 @@ export const CalHubApp: React.FC = () => {
             currentDate={currentDate}
             onDateClick={handleDateClick}
             onEventClick={handleEventClick}
+            onPrevMonth={handlePrev}
+            onNextMonth={handleNext}
           />
         )}
       </main>

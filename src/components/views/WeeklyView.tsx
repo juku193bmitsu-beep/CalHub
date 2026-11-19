@@ -24,7 +24,7 @@ export const WeeklyView: React.FC<WeeklyViewProps> = ({
 }) => {
   const { filteredEvents } = useEvents();
 
-  const { onTouchStart, onTouchEnd } = useSwipeNavigation({
+  const { onTouchStart, onTouchMove, onTouchEnd } = useSwipeNavigation({
     onSwipeLeft: onNextWeek,
     onSwipeRight: onPrevWeek,
   });
@@ -59,6 +59,7 @@ export const WeeklyView: React.FC<WeeklyViewProps> = ({
   return (
     <div
       onTouchStart={onTouchStart}
+      onTouchMove={onTouchMove}
       onTouchEnd={onTouchEnd}
       className="flex-1 flex flex-col h-full w-full select-none bg-slate-50 dark:bg-slate-900 overflow-hidden"
     >
