@@ -2,7 +2,7 @@ import React, { useState, useRef } from 'react';
 import { CalendarEvent } from '../../types/calendar';
 import { EventChip } from '../events/EventChip';
 import { getJapaneseHoliday } from '../../constants/holidays';
-import { formatLocalDate } from '../../services/dateUtils';
+import { formatLocalDate, getEventStartDateStr, isMultiDayEvent } from '../../services/dateUtils';
 import { useEvents } from '../../contexts/EventContext';
 import { isClickSuppressed, suppressNextClicks, triggerHaptic } from '../../services/gestureUtils';
 
@@ -56,32 +56,38 @@ export const VerticalDayRow: React.FC<VerticalDayRowProps> = ({
   const thisDateStr = formatLocalDate(date);
 
   // Filter & sort events:
-  // In vertical view, multi-day non-start days don't repeat the title chip (covered by arrow).
-  // Multi-day start events are strictly sorted to the FIRST slot so that multi-day arrows
-  // always emerge cleanly from the primary left rail at x=76px without colliding with single-day events.
-  const isMultiDay = (ev: CalendarEvent) => {
-    const startStr = ev.start.date || ev.start.dateTime?.slice(0, 10);
-    const endStr = ev.end.date || ev.end.dateTime?.slice(0, 10);
-    return !!startStr && !!endStr && startStr !== endStr;
-  };
-
+  // In vertical view, multi-day non-start days don't repeat the title chip (covered by vertical arrow).
+  // Multi-day start events (where arrow line originates) MUST be strictly sorted to the FIRST (leftmost) slot
+  // so the arrow emerges directly beneath the chip at x=76px without colliding or misalignment!
   const visibleChips = events
     .filter((ev) => {
-      const startStr = ev.start.date || ev.start.dateTime?.slice(0, 10);
-      const isMulti = isMultiDay(ev);
+      const isMulti = isMultiDayEvent(ev);
+      const startStr = getEventStartDateStr(ev);
 
-      // If multi-day, only render chip on start day
+      // If multi-day, only render chip on start day (days 2..end are covered by vertical arrow line)
       if (isMulti && startStr !== thisDateStr) {
         return false;
       }
       return true;
     })
     .sort((a, b) => {
-      const aMulti = isMultiDay(a);
-      const bMulti = isMultiDay(b);
+      const aMulti = isMultiDayEvent(a);
+      const bMulti = isMultiDayEvent(b);
+
+      // 1. Multi-day arrow events ALWAYS come FIRST (leftmost slot)
       if (aMulti && !bMulti) return -1;
       if (!aMulti && bMulti) return 1;
-      return 0;
+
+      // 2. All-day single-day events come before timed events
+      const aAllDay = !!a.isAllDay || (!a.start.dateTime && !!a.start.date);
+      const bAllDay = !!b.isAllDay || (!b.start.dateTime && !!b.start.date);
+      if (aAllDay && !bAllDay) return -1;
+      if (!aAllDay && bAllDay) return 1;
+
+      // 3. Otherwise sort chronologically
+      const aTime = a.start.dateTime || a.start.date || '';
+      const bTime = b.start.dateTime || b.start.date || '';
+      return aTime.localeCompare(bTime);
     });
 
   const handleDragOver = (e: React.DragEvent) => {
@@ -200,9 +206,7 @@ export const VerticalDayRow: React.FC<VerticalDayRowProps> = ({
         }`}
       >
         {visibleChips.slice(0, 3).map((event) => {
-          const startStr = event.start.date || event.start.dateTime?.slice(0, 10);
-          const endStr = event.end.date || event.end.dateTime?.slice(0, 10);
-          const isMultiDayStart = !!startStr && !!endStr && startStr !== endStr && startStr === thisDateStr;
+          const isMultiDayStart = isMultiDayEvent(event) && getEventStartDateStr(event) === thisDateStr;
 
           return (
             <EventChip

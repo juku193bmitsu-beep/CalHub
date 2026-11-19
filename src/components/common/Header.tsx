@@ -69,41 +69,41 @@ export const Header: React.FC<HeaderProps> = ({
   }, [isViewMenuOpen]);
 
   return (
-    <footer className="bg-white/95 dark:bg-slate-900/95 backdrop-blur-md border-t border-slate-200/80 dark:border-slate-800 pb-safe pt-2 px-2.5 sm:px-4 z-30 shrink-0 transition-colors shadow-lg">
+    <footer className="bg-white/95 dark:bg-slate-900/95 backdrop-blur-md border-t border-slate-200/80 dark:border-slate-800 pb-safe pt-2.5 pb-2.5 sm:py-3.5 px-3 sm:px-5 z-30 shrink-0 transition-colors shadow-lg">
       <div className="flex items-center justify-between gap-1 sm:gap-3 max-w-7xl mx-auto">
         {/* Left: Month Year Display & Date Navigation (＜ 2026年11月 ＞) */}
-        <div className="flex items-center gap-0.5 shrink-0">
+        <div className="flex items-center gap-1 shrink-0">
           <button
             onClick={onPrev}
-            className="p-1 rounded-md text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 active:scale-90 transition"
+            className="p-1.5 rounded-lg text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 active:scale-90 transition"
             aria-label="前へ"
             title="前へ"
           >
-            <ChevronLeft className="w-4 h-4" />
+            <ChevronLeft className="w-5 h-5" />
           </button>
 
           {/* Month & Year Title: Clickable Drum Roll Trigger */}
           <button
             type="button"
             onClick={onOpenYearMonthPicker}
-            className="px-1.5 sm:px-2 py-0.5 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 transition active:scale-95 cursor-pointer text-center"
+            className="px-2 py-1 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800 transition active:scale-95 cursor-pointer text-center"
             title="タップして年月をドラムロールで選択"
           >
-            <h1 className="text-sm sm:text-lg font-bold tracking-tight text-slate-900 dark:text-white tabular-nums whitespace-nowrap flex items-center gap-1">
+            <h1 className="text-base sm:text-xl font-extrabold tracking-tight text-slate-900 dark:text-white tabular-nums whitespace-nowrap flex items-center gap-1.5">
               <span>{year}年{month}月</span>
               {isFetchingMonth && (
-                <RefreshCw className="w-3 h-3 text-blue-500 animate-spin shrink-0" />
+                <RefreshCw className="w-3.5 h-3.5 text-blue-500 animate-spin shrink-0" />
               )}
             </h1>
           </button>
 
           <button
             onClick={onNext}
-            className="p-1 rounded-md text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 active:scale-90 transition"
+            className="p-1.5 rounded-lg text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 active:scale-90 transition"
             aria-label="次へ"
             title="次へ"
           >
-            <ChevronRight className="w-4 h-4" />
+            <ChevronRight className="w-5 h-5" />
           </button>
         </div>
 
@@ -111,7 +111,7 @@ export const Header: React.FC<HeaderProps> = ({
         <div className="flex items-center justify-center shrink-0">
           <button
             onClick={onToday}
-            className="px-3 sm:px-4 py-1 text-xs font-bold rounded-xl bg-blue-50 hover:bg-blue-100 dark:bg-blue-950/60 dark:hover:bg-blue-900/60 text-blue-600 dark:text-blue-400 border border-blue-200/80 dark:border-blue-800/80 transition active:scale-90 shadow-2xs"
+            className="px-3.5 sm:px-5 py-1.5 text-xs sm:text-sm font-bold rounded-xl bg-blue-50 hover:bg-blue-100 dark:bg-blue-950/60 dark:hover:bg-blue-900/60 text-blue-600 dark:text-blue-400 border border-blue-200/80 dark:border-blue-800/80 transition active:scale-90 shadow-2xs"
             title="今日へ移動"
           >
             今日
@@ -125,12 +125,12 @@ export const Header: React.FC<HeaderProps> = ({
           <div className="relative shrink-0" ref={viewMenuRef}>
             <button
               onClick={() => setIsViewMenuOpen(!isViewMenuOpen)}
-              className="sm:hidden flex items-center gap-1 px-2 py-1 text-xs font-semibold rounded-xl bg-slate-100 dark:bg-slate-800 text-blue-600 dark:text-blue-400 border border-slate-200/80 dark:border-slate-700 active:scale-95 transition shadow-2xs"
+              className="sm:hidden flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-bold rounded-xl bg-slate-100 dark:bg-slate-800 text-blue-600 dark:text-blue-400 border border-slate-200/80 dark:border-slate-700 active:scale-95 transition shadow-2xs"
               title="カレンダー表示形式を切り替え"
             >
               {currentViewOption.icon}
               <span>{currentViewOption.label}</span>
-              <ChevronDown className="w-3 h-3 text-slate-400" />
+              <ChevronDown className="w-3.5 h-3.5 text-slate-400" />
             </button>
 
             {/* Mobile Dropdown Menu (Opens Upwards for Bottom Bar) */}
@@ -163,7 +163,7 @@ export const Header: React.FC<HeaderProps> = ({
                   key={opt.type}
                   onClick={() => onViewChange(opt.type)}
                   title={opt.label}
-                  className={`flex items-center gap-1 p-1.5 sm:px-2.5 sm:py-1 text-xs font-medium rounded-lg transition-all ${
+                  className={`flex items-center gap-1.5 p-1.5 sm:px-3 sm:py-1.5 text-xs sm:text-sm font-medium rounded-lg transition-all ${
                     viewType === opt.type
                       ? 'bg-white dark:bg-slate-700 text-blue-600 dark:text-blue-400 shadow-sm font-semibold'
                       : 'text-slate-500 hover:text-slate-800 dark:text-slate-400 dark:hover:text-slate-200'
@@ -179,18 +179,18 @@ export const Header: React.FC<HeaderProps> = ({
           {/* Quick Action icons (Search & Settings) */}
           <button
             onClick={onOpenSearch}
-            className="p-1.5 rounded-lg text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 active:scale-95 transition"
+            className="p-2 rounded-xl text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 active:scale-95 transition"
             title="全期間予定検索"
           >
-            <Search className="w-4 h-4" />
+            <Search className="w-4.5 h-4.5" />
           </button>
 
           <button
             onClick={onOpenArrowSettings}
-            className="p-1.5 rounded-lg text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 active:scale-95 transition"
+            className="p-2 rounded-xl text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 active:scale-95 transition"
             title="設定（テーマ・カレンダー・デザイン）"
           >
-            <Sliders className="w-4 h-4" />
+            <Sliders className="w-4.5 h-4.5" />
           </button>
         </div>
       </div>

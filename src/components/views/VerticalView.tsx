@@ -105,7 +105,7 @@ export const VerticalView: React.FC<VerticalViewProps> = ({
       onScroll={handleScroll}
       className="relative flex-1 w-full h-full overflow-y-auto overflow-x-hidden select-none bg-white dark:bg-slate-900"
     >
-      <div className="relative min-w-full pb-20">
+      <div className="relative min-w-full pb-0">
         {/* Multi-day arrow SVG layer */}
         <MultiDayArrowCanvas
           events={filteredEvents}
