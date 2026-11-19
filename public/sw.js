@@ -1,5 +1,5 @@
 // CalHub Service Worker (Network First to ensure latest version always loads)
-const CACHE_NAME = 'calhub-cache-v2';
+const CACHE_NAME = 'calhub-cache-v3';
 
 self.addEventListener('install', (e) => {
   self.skipWaiting();
