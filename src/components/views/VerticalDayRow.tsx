@@ -160,29 +160,35 @@ export const VerticalDayRow: React.FC<VerticalDayRowProps> = ({
         isDragOver
           ? 'bg-blue-100/80 dark:bg-blue-900/50 border-blue-400 scale-[1.002] z-10 shadow-xs'
           : isToday
-          ? 'bg-blue-50/40 dark:bg-blue-950/20'
+          ? 'bg-blue-50/90 dark:bg-blue-950/40 border-l-[3.5px] border-l-blue-600 dark:border-l-blue-400 pl-[calc(0.5rem-3.5px)] font-medium border-y border-y-blue-200/70 dark:border-y-blue-800/70'
           : ''
       }`}
     >
       {/* Date Indicator (Left Column: fixed 58px width) */}
       <div className="flex items-center gap-1 w-[58px] shrink-0 select-none">
         <span
-          className={`w-6 h-6 flex items-center justify-center rounded-full text-xs font-semibold tabular-nums ${
+          className={`w-6 h-6 flex items-center justify-center rounded-full text-xs tabular-nums ${
             isToday
-              ? 'bg-blue-600 text-white shadow-sm'
-              : dayColorClass
+              ? 'bg-blue-600 text-white font-bold shadow-md ring-2 ring-blue-300 dark:ring-blue-600'
+              : `${dayColorClass} font-semibold`
           }`}
         >
           {dayNum}
         </span>
-        <span className={`text-[11px] ${badgeClass}`}>{weekdayStr}</span>
+        {isToday ? (
+          <span className="text-[10px] font-bold text-blue-600 dark:text-blue-400 bg-blue-100/90 dark:bg-blue-900/60 px-1 py-0.2 rounded leading-none">
+            今日
+          </span>
+        ) : (
+          <span className={`text-[11px] ${badgeClass}`}>{weekdayStr}</span>
+        )}
       </div>
 
       {/* Events Lane:
           When arrows pass through on days 2..end, offset by pl-6 to provide clean rail for arrow lines.
           On start days, offset by pl-1 so the chip's anchor dot aligns precisely at x=76px!
       */}
-      <div className={`flex-1 flex items-center gap-1.5 overflow-hidden min-w-0 transition-all ${
+      <div className={`flex-1 flex items-center gap-1 overflow-hidden min-w-0 transition-all ${
         hasArrowPassing ? 'pl-6' : 'pl-1'
       }`}>
         {visibleChips.slice(0, 3).map((event) => {
@@ -203,9 +209,18 @@ export const VerticalDayRow: React.FC<VerticalDayRowProps> = ({
         })}
 
         {visibleChips.length > 3 && (
-          <span className="text-[10px] font-semibold text-slate-500 dark:text-slate-400 bg-slate-100 dark:bg-slate-800 px-1.5 py-0.2 rounded shrink-0">
+          <button
+            type="button"
+            onClick={(e) => {
+              e.stopPropagation();
+              triggerHaptic('light');
+              onDateClick(date);
+            }}
+            className="flex items-center justify-center shrink-0 h-[20px] px-1.5 text-[10px] font-bold text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-950/80 border border-blue-200 dark:border-blue-800 rounded-md shadow-2xs hover:bg-blue-100 dark:hover:bg-blue-900 transition active:scale-95 cursor-pointer"
+            title={`他 ${visibleChips.length - 3} 件の予定があります（タップで詳細表示）`}
+          >
             +{visibleChips.length - 3}
-          </span>
+          </button>
         )}
       </div>
     </div>

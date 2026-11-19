@@ -137,7 +137,7 @@ export const EventChip: React.FC<EventChipProps> = ({
     <div
       onContextMenu={handleContextMenu}
       onClick={(e) => e.stopPropagation()}
-      className="relative inline-flex w-[138px] sm:w-[155px] shrink-0 min-w-0"
+      className="relative inline-flex w-[84px] xs:w-[88px] sm:w-[130px] md:w-[150px] shrink-0 min-w-0"
     >
       <div
         {...longPressProps}
@@ -166,18 +166,18 @@ export const EventChip: React.FC<EventChipProps> = ({
                 borderColor: borderColorLight,
               }
         }
-        className={`w-full no-select cursor-grab active:cursor-grabbing transition-all select-none text-xs flex items-center gap-1.5 shadow-2xs border hover:shadow-xs overflow-hidden ${
+        className={`w-full no-select cursor-grab active:cursor-grabbing transition-all select-none text-[10px] sm:text-xs flex items-center gap-1 shadow-2xs border hover:shadow-xs overflow-hidden ${
           isAllDay
-            ? 'rounded-lg px-2 py-0.5 font-medium text-white shadow-xs'
+            ? 'rounded-lg px-1.5 sm:px-2 py-0.5 font-medium text-white shadow-xs'
             : timedEventStyle === 'underbar'
             ? 'px-1 py-0.5 font-medium text-slate-800 dark:text-slate-100 shadow-none'
-            : 'rounded-lg px-2 py-0.5 font-medium text-slate-800 dark:text-slate-100'
-        } ${isCompact ? 'h-[20px] text-[10px]' : 'h-[23px]'} ${
+            : 'rounded-lg px-1.5 sm:px-2 py-0.5 font-medium text-slate-800 dark:text-slate-100'
+        } ${isCompact ? 'h-[20px] text-[9.5px] sm:text-[10px]' : 'h-[23px]'} ${
           isDragging ? 'opacity-40 scale-95 border-dashed border-blue-400' : ''
         }`}
       >
         {timeText && (
-          <span className="text-[10px] opacity-75 font-normal tabular-nums shrink-0">
+          <span className="text-[9px] sm:text-[10px] opacity-75 font-normal tabular-nums shrink-0">
             {timeText}
           </span>
         )}

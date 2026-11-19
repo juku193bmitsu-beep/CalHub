@@ -19,6 +19,8 @@ interface CalendarContextType {
   updateArrowSettings: (settings: Partial<ArrowDesignSettings>) => void;
   timedEventStyle: TimedEventStyle;
   setTimedEventStyle: (style: TimedEventStyle) => void;
+  showZoomControls: boolean;
+  setShowZoomControls: (show: boolean) => void;
   theme: 'light' | 'dark';
   toggleTheme: () => void;
   authToken: string | null;
@@ -120,6 +122,21 @@ export const CalendarProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     return 'badge';
   });
 
+  const [showZoomControls, setShowZoomControls] = useState<boolean>(() => {
+    try {
+      const saved = localStorage.getItem(STORAGE_KEY_PREFS);
+      if (saved) {
+        const parsed: UserPreferences = JSON.parse(saved);
+        if (typeof parsed.showZoomControls === 'boolean') {
+          return parsed.showZoomControls;
+        }
+      }
+    } catch {
+      // fallback
+    }
+    return true;
+  });
+
   const [theme, setTheme] = useState<'light' | 'dark'>('light');
 
   // Fetch calendars when token becomes available
@@ -171,13 +188,14 @@ export const CalendarProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         visibleCalendarIds: Array.from(visibleCalendarIds),
         arrowSettings,
         timedEventStyle,
+        showZoomControls,
         theme,
       };
       localStorage.setItem(STORAGE_KEY_PREFS, JSON.stringify(prefs));
     } catch (e) {
       console.error('Failed to save preferences to localStorage', e);
     }
-  }, [visibleCalendarIds, arrowSettings, timedEventStyle, theme]);
+  }, [visibleCalendarIds, arrowSettings, timedEventStyle, showZoomControls, theme]);
 
   const toggleCalendarVisibility = (id: string) => {
     setVisibleCalendarIds((prev) => {
@@ -229,6 +247,8 @@ export const CalendarProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         updateArrowSettings,
         timedEventStyle,
         setTimedEventStyle,
+        showZoomControls,
+        setShowZoomControls,
         theme,
         toggleTheme,
         authToken,

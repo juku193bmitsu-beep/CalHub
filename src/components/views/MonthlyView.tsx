@@ -133,7 +133,7 @@ const MonthGrid: React.FC<MonthGridProps> = ({
                       !isCurrentMonth
                         ? 'opacity-35 bg-slate-50/50 dark:bg-slate-950/40'
                         : 'bg-white dark:bg-slate-900'
-                    } ${isCurrentToday ? 'bg-blue-50/30 dark:bg-blue-950/20' : ''} ${
+                    } ${isCurrentToday ? 'bg-blue-50/70 dark:bg-blue-950/30 border-t-2 border-t-blue-600 dark:border-t-blue-400' : ''} ${
                       isOverThisDay
                         ? 'bg-blue-100/90 dark:bg-blue-900/50 ring-2 ring-blue-500 z-10'
                         : ''
@@ -144,7 +144,7 @@ const MonthGrid: React.FC<MonthGridProps> = ({
                       <span
                         className={`w-5 h-5 flex items-center justify-center rounded-full text-xs font-semibold tabular-nums ${
                           isCurrentToday
-                            ? 'bg-blue-600 text-white shadow-xs'
+                            ? 'bg-blue-600 text-white font-bold shadow-sm ring-2 ring-blue-300 dark:ring-blue-700'
                             : holiday || dayOfWeek === 0
                             ? 'text-rose-500'
                             : dayOfWeek === 6

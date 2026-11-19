@@ -39,6 +39,8 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
     updateArrowSettings,
     timedEventStyle,
     setTimedEventStyle,
+    showZoomControls,
+    setShowZoomControls,
     authToken,
     setAuthToken,
     theme,
@@ -508,6 +510,31 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                     </div>
                   </button>
                 </div>
+              </div>
+
+              {/* Floating Zoom Button Toggle */}
+              <div className="flex items-center justify-between p-3 rounded-2xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700/80">
+                <div>
+                  <div className="text-xs font-semibold text-slate-800 dark:text-slate-200">
+                    縦型表示の拡大ボタン
+                  </div>
+                  <div className="text-[11px] text-slate-500 dark:text-slate-400">
+                    右下の拡大・縮小ボタンの表示（ピンチ操作でも拡大縮小できます）
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setShowZoomControls(!showZoomControls)}
+                  className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${
+                    showZoomControls ? 'bg-blue-600' : 'bg-slate-300 dark:bg-slate-700'
+                  }`}
+                >
+                  <span
+                    className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow-md ring-0 transition duration-200 ease-in-out ${
+                      showZoomControls ? 'translate-x-5' : 'translate-x-0'
+                    }`}
+                  />
+                </button>
               </div>
 
               {/* Live Preview Box */}

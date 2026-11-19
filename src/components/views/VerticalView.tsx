@@ -7,7 +7,7 @@ import { MultiDayArrowCanvas } from './MultiDayArrowCanvas';
 import { usePinchZoom } from '../../hooks/usePinchZoom';
 import { useSwipeNavigation } from '../../hooks/useSwipeNavigation';
 import { suppressNextClicks } from '../../services/gestureUtils';
-import { ZoomIn, ZoomOut, RotateCcw } from 'lucide-react';
+import { ZoomIn, ZoomOut, RotateCcw, X } from 'lucide-react';
 import {
   formatLocalDate,
   isEventOnDate,
@@ -31,8 +31,9 @@ export const VerticalView: React.FC<VerticalViewProps> = ({
   onNextMonth,
 }) => {
   const { filteredEvents } = useEvents();
-  const { arrowSettings } = useCalendar();
+  const { arrowSettings, showZoomControls } = useCalendar();
 
+  const [isZoomExpanded, setIsZoomExpanded] = useState<boolean>(false);
   const containerRef = useRef<HTMLDivElement | null>(null);
   const [containerHeight, setContainerHeight] = useState<number>(600);
 
@@ -104,7 +105,7 @@ export const VerticalView: React.FC<VerticalViewProps> = ({
       onScroll={handleScroll}
       className="relative flex-1 w-full h-full overflow-y-auto overflow-x-hidden select-none bg-white dark:bg-slate-900"
     >
-      <div className="relative min-w-full">
+      <div className="relative min-w-full pb-20">
         {/* Multi-day arrow SVG layer */}
         <MultiDayArrowCanvas
           events={filteredEvents}
@@ -149,33 +150,65 @@ export const VerticalView: React.FC<VerticalViewProps> = ({
         })}
       </div>
 
-      {/* Floating Zoom Controls for Convenience */}
-      <div className="fixed right-3 bottom-5 z-20 flex flex-col gap-1.5 bg-white/90 dark:bg-slate-800/90 backdrop-blur-md p-1 rounded-2xl shadow-lg border border-slate-200/80 dark:border-slate-700/80">
-        <button
-          onClick={zoomIn}
-          className="p-2 text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-xl transition active:scale-90"
-          title="拡大"
-        >
-          <ZoomIn className="w-4 h-4" />
-        </button>
-        {zoom > 1.05 && (
-          <button
-            onClick={resetZoom}
-            className="p-2 text-blue-600 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-slate-700 rounded-xl transition active:scale-90"
-            title="1画面フィットにリセット"
-          >
-            <RotateCcw className="w-4 h-4" />
-          </button>
-        )}
-        <button
-          onClick={zoomOut}
-          disabled={zoom <= 1.0}
-          className="p-2 text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-xl transition active:scale-90 disabled:opacity-30"
-          title="縮小"
-        >
-          <ZoomOut className="w-4 h-4" />
-        </button>
-      </div>
+      {/* Floating Zoom Controls: Collapsible & Non-intrusive */}
+      {showZoomControls && (
+        <div className="fixed right-2.5 bottom-16 sm:bottom-18 z-20">
+          {!isZoomExpanded ? (
+            <button
+              type="button"
+              onClick={() => setIsZoomExpanded(true)}
+              className="flex items-center gap-1 px-2.5 py-1.5 rounded-full bg-white/75 dark:bg-slate-800/75 hover:bg-white/95 dark:hover:bg-slate-800/95 backdrop-blur-md shadow-md border border-slate-200/80 dark:border-slate-700/80 text-slate-500 hover:text-slate-800 dark:hover:text-slate-200 opacity-60 hover:opacity-100 transition active:scale-95 cursor-pointer text-xs"
+              title="拡大・縮小ツールを開く"
+            >
+              <ZoomIn className="w-3.5 h-3.5" />
+              {zoom > 1.05 && (
+                <span className="text-[10px] font-bold text-blue-600 dark:text-blue-400 tabular-nums">
+                  {Math.round(zoom * 100)}%
+                </span>
+              )}
+            </button>
+          ) : (
+            <div className="flex items-center gap-1 bg-white/95 dark:bg-slate-800/95 backdrop-blur-md px-1.5 py-1 rounded-2xl shadow-xl border border-slate-200 dark:border-slate-700 animate-in fade-in slide-in-from-bottom-2 duration-150">
+              <button
+                type="button"
+                onClick={zoomIn}
+                className="p-1.5 text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-xl transition active:scale-90"
+                title="拡大"
+              >
+                <ZoomIn className="w-4 h-4" />
+              </button>
+              {zoom > 1.05 && (
+                <button
+                  type="button"
+                  onClick={resetZoom}
+                  className="p-1.5 text-blue-600 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-slate-700 rounded-xl transition active:scale-90"
+                  title="全体表示にリセット"
+                >
+                  <RotateCcw className="w-4 h-4" />
+                </button>
+              )}
+              <button
+                type="button"
+                onClick={zoomOut}
+                disabled={zoom <= 1.0}
+                className="p-1.5 text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-xl transition active:scale-90 disabled:opacity-30"
+                title="縮小"
+              >
+                <ZoomOut className="w-4 h-4" />
+              </button>
+              <div className="w-[1px] h-4 bg-slate-200 dark:bg-slate-700 mx-0.5" />
+              <button
+                type="button"
+                onClick={() => setIsZoomExpanded(false)}
+                className="p-1 text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 rounded-lg transition active:scale-90"
+                title="閉じる"
+              >
+                <X className="w-3.5 h-3.5" />
+              </button>
+            </div>
+          )}
+        </div>
+      )}
     </div>
   );
 };
