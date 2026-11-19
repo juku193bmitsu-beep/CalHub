@@ -119,6 +119,7 @@ export const AuthBar: React.FC<AuthBarProps> = ({ onTokenChange }) => {
       if (remainingMs <= 0) {
         saveToken(null, null);
         onTokenChange(null);
+        setIsDismissed(false);
       } else if (remainingMs < 5 * 60 * 1000) {
         handleSilentRefresh();
       }

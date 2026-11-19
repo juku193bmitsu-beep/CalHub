@@ -21,8 +21,8 @@ export class CalendarApiService {
       });
 
       // Handle Rate Limiting (429) or Server Overload (500, 503) with exponential backoff retry
-      if ((res.status === 429 || res.status >= 500) && retryCount < 2) {
-        const delay = (retryCount + 1) * 1000;
+      if ((res.status === 429 || res.status >= 500) && retryCount < 3) {
+        const delay = Math.pow(2, retryCount) * 1000 + Math.floor(Math.random() * 500);
         await new Promise((r) => setTimeout(r, delay));
         return this.request<T>(endpoint, token, options, retryCount + 1);
       }
@@ -32,6 +32,9 @@ export class CalendarApiService {
         const error: any = new Error(errBody.error?.message || `API error ${res.status}`);
         error.status = res.status;
         error.code = errBody.error?.code;
+        if (res.status === 401) {
+          error.isAuthError = true;
+        }
         throw error;
       }
 

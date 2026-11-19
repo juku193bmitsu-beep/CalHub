@@ -82,3 +82,23 @@ export function isMultiDayEvent(event: CalendarEvent): boolean {
   const endInclusiveStr = getEventEndDateInclusiveStr(event);
   return !!startStr && !!endInclusiveStr && startStr !== endInclusiveStr;
 }
+
+/**
+ * Safely adds or subtracts months from a date, avoiding the JavaScript Date
+ * end-of-month rollover bug (e.g., March 31 - 1 month != March 3, but Feb 28).
+ */
+export function addMonthsSafe(date: Date, months: number): Date {
+  const target = new Date(date);
+  const originalDay = target.getDate();
+
+  // Set day to 1st to avoid overflow during month change
+  target.setDate(1);
+  target.setMonth(target.getMonth() + months);
+
+  // Clamp to maximum days in the target month
+  const maxDays = new Date(target.getFullYear(), target.getMonth() + 1, 0).getDate();
+  target.setDate(Math.min(originalDay, maxDays));
+
+  return target;
+}
+

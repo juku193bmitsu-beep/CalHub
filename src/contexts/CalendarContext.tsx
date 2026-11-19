@@ -29,9 +29,35 @@ const CalendarContext = createContext<CalendarContextType | null>(null);
 
 const STORAGE_KEY_PREFS = 'calhub_preferences_v1';
 const STORAGE_KEY_CALENDARS = 'calhub_cached_calendars_v1';
+const STORAGE_KEY_AUTH_TOKEN = 'calhub_google_auth_token_v1';
+const STORAGE_KEY_AUTH_EXPIRES = 'calhub_google_auth_expires_v1';
 
 export const CalendarProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const [authToken, setAuthToken] = useState<string | null>(null);
+  const [authToken, setAuthTokenState] = useState<string | null>(() => {
+    try {
+      const savedToken = localStorage.getItem(STORAGE_KEY_AUTH_TOKEN);
+      const savedExpires = localStorage.getItem(STORAGE_KEY_AUTH_EXPIRES);
+      if (savedToken && savedExpires && Number(savedExpires) > Date.now()) {
+        return savedToken;
+      }
+    } catch {
+      // fallback
+    }
+    return null;
+  });
+
+  const setAuthToken = useCallback((token: string | null) => {
+    setAuthTokenState(token);
+    try {
+      if (!token) {
+        localStorage.removeItem(STORAGE_KEY_AUTH_TOKEN);
+        localStorage.removeItem(STORAGE_KEY_AUTH_EXPIRES);
+      }
+    } catch {
+      // ignore
+    }
+  }, []);
+
   const [isSyncing, setIsSyncing] = useState<boolean>(false);
 
   // Cached or mock calendars

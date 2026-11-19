@@ -16,7 +16,7 @@ import { SettingsModal } from './components/settings/SettingsModal';
 import { YearMonthPickerModal } from './components/pickers/YearMonthPickerModal';
 import { CalendarViewType } from './types/view';
 import { CalendarEvent } from './types/calendar';
-import { formatLocalDate, parseLocalDate } from './services/dateUtils';
+import { formatLocalDate, parseLocalDate, addMonthsSafe } from './services/dateUtils';
 import { Check, RefreshCw } from 'lucide-react';
 
 const STORAGE_KEY_VIEW = 'calhub_view_type_v1';
@@ -61,27 +61,27 @@ export const CalHubApp: React.FC = () => {
   const [isYearMonthPickerOpen, setIsYearMonthPickerOpen] = useState(false);
   const [flipDirection, setFlipDirection] = useState<'prev' | 'next' | null>(null);
 
-  // Navigations with page turn direction
+  // Navigations with page turn direction and safe month rollover
   const handlePrev = () => {
     setFlipDirection('prev');
-    const d = new Date(currentDate);
     if (viewType === 'week' || viewType === 'timegrid') {
+      const d = new Date(currentDate);
       d.setDate(d.getDate() - 7);
+      setCurrentDate(d);
     } else {
-      d.setMonth(d.getMonth() - 1);
+      setCurrentDate((prev) => addMonthsSafe(prev, -1));
     }
-    setCurrentDate(d);
   };
 
   const handleNext = () => {
     setFlipDirection('next');
-    const d = new Date(currentDate);
     if (viewType === 'week' || viewType === 'timegrid') {
+      const d = new Date(currentDate);
       d.setDate(d.getDate() + 7);
+      setCurrentDate(d);
     } else {
-      d.setMonth(d.getMonth() + 1);
+      setCurrentDate((prev) => addMonthsSafe(prev, 1));
     }
-    setCurrentDate(d);
   };
 
   const handleToday = () => {
@@ -91,12 +91,9 @@ export const CalHubApp: React.FC = () => {
 
   const handleSelectYearMonth = (year: number, month: number) => {
     setFlipDirection(null);
-    const d = new Date(currentDate);
-    // Keep day within bounds of the target month
     const maxDays = new Date(year, month, 0).getDate();
-    const clampedDay = Math.min(d.getDate(), maxDays);
-    d.setFullYear(year, month - 1, clampedDay);
-    setCurrentDate(d);
+    const clampedDay = Math.min(currentDate.getDate(), maxDays);
+    setCurrentDate(new Date(year, month - 1, clampedDay));
   };
 
   // Universal Date Click Handler (handles both Paste and Open Detail)

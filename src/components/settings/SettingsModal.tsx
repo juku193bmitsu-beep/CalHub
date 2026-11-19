@@ -43,7 +43,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
     toggleTheme,
   } = useCalendar();
 
-  const { clearAllEvents, resetToMockEvents, refreshEvents } = useEvents();
+  const { clearAllEvents, resetToMockEvents, refreshEvents, eventStats, isSyncingEvents } = useEvents();
 
   const [activeTab, setActiveTab] = useState<'calendars' | 'google' | 'arrows'>(initialTab);
   const [clientIdInput, setClientIdInput] = useState(googleAuth.getClientId());
@@ -289,48 +289,37 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
           {activeTab === 'google' && (
             <div className="space-y-4">
               {/* Connection Status Card */}
-              <div className="p-4 rounded-2xl border border-slate-200 dark:border-slate-800 bg-slate-50/70 dark:bg-slate-950/40 flex items-center justify-between">
-                <div>
-                  <div className="flex items-center gap-2">
-                    <span
-                      className={`w-2.5 h-2.5 rounded-full ${
-                        authToken
-                          ? 'bg-emerald-500 animate-pulse'
+              <div className="p-4 rounded-2xl border border-slate-200 dark:border-slate-800 bg-slate-50/70 dark:bg-slate-950/40 space-y-3">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <div className="flex items-center gap-2">
+                      <span
+                        className={`w-2.5 h-2.5 rounded-full ${
+                          authToken
+                            ? 'bg-emerald-500 animate-pulse'
+                            : isConfigured
+                            ? 'bg-blue-500'
+                            : 'bg-amber-500'
+                        }`}
+                      />
+                      <span className="text-xs font-bold text-slate-800 dark:text-slate-100">
+                        {authToken
+                          ? 'Googleカレンダー接続中'
                           : isConfigured
-                          ? 'bg-blue-500'
-                          : 'bg-amber-500'
-                      }`}
-                    />
-                    <span className="text-xs font-bold text-slate-800 dark:text-slate-100">
+                          ? 'Client ID 設定済み（未接続 / 期限切れ）'
+                          : 'デモモード（ローカル保存中）'}
+                      </span>
+                    </div>
+                    <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5">
                       {authToken
-                        ? 'Googleカレンダー同期中（接続済み）'
+                        ? 'Googleカレンダーと安全に同期されています'
                         : isConfigured
-                        ? 'Client ID 設定完了（認証待ち）'
-                        : 'デモモード（ローカル保存中）'}
-                    </span>
+                        ? 'Googleログインを押すとご自身のカレンダーと接続・同期されます'
+                        : 'Client ID を入力するとGoogleカレンダーと双方向同期できます'}
+                    </p>
                   </div>
-                  <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5">
-                    {authToken
-                      ? 'ご自身のGoogleカレンダーとリアルタイムに同期しています'
-                      : isConfigured
-                      ? '「Googleでログイン」を押すとご自身のアカウントと接続されます'
-                      : 'Client ID を入力するとGoogleカレンダーと双方向同期できます'}
-                  </p>
-                </div>
 
-                {authToken ? (
-                  <div className="flex items-center gap-2">
-                    <button
-                      type="button"
-                      onClick={() => {
-                        refreshEvents();
-                        onClose();
-                      }}
-                      className="px-3 py-1.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold flex items-center gap-1.5 transition active:scale-95 shadow-xs shrink-0"
-                    >
-                      <RotateCcw className="w-3.5 h-3.5" />
-                      <span>過去10年分を再同期</span>
-                    </button>
+                  {authToken ? (
                     <button
                       type="button"
                       onClick={handleGoogleLogout}
@@ -339,22 +328,52 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                       <LogOut className="w-3.5 h-3.5" />
                       <span>ログアウト</span>
                     </button>
+                  ) : (
+                    <button
+                      type="button"
+                      onClick={handleGoogleLogin}
+                      disabled={isLoggingIn || !isConfigured}
+                      className={`px-3 py-1.5 rounded-xl text-white text-xs font-semibold flex items-center gap-1.5 transition shrink-0 shadow-xs ${
+                        isConfigured
+                          ? 'bg-blue-600 hover:bg-blue-700 active:scale-95'
+                          : 'bg-slate-400 cursor-not-allowed opacity-60'
+                      }`}
+                    >
+                      <LogIn className="w-3.5 h-3.5" />
+                      <span>{isLoggingIn ? '認証中...' : 'Googleログイン'}</span>
+                    </button>
+                  )}
+                </div>
+
+                {/* Stored Events Statistics & Resync Action */}
+                <div className="pt-2 border-t border-slate-200/80 dark:border-slate-800/80 flex items-center justify-between">
+                  <div className="text-[11px] text-slate-600 dark:text-slate-300">
+                    <span className="font-semibold">端末内キャッシュ: </span>
+                    <span className="font-bold text-blue-600 dark:text-blue-400">
+                      {eventStats.total.toLocaleString()} 件
+                    </span>
+                    {eventStats.minYear && eventStats.maxYear && (
+                      <span className="text-slate-500 dark:text-slate-400 ml-1">
+                        ({eventStats.minYear}年〜{eventStats.maxYear}年)
+                      </span>
+                    )}
                   </div>
-                ) : (
-                  <button
-                    type="button"
-                    onClick={handleGoogleLogin}
-                    disabled={isLoggingIn || !isConfigured}
-                    className={`px-3 py-1.5 rounded-xl text-white text-xs font-semibold flex items-center gap-1.5 transition shrink-0 shadow-xs ${
-                      isConfigured
-                        ? 'bg-blue-600 hover:bg-blue-700 active:scale-95'
-                        : 'bg-slate-400 cursor-not-allowed opacity-60'
-                    }`}
-                  >
-                    <LogIn className="w-3.5 h-3.5" />
-                    <span>{isLoggingIn ? '認証中...' : 'Googleログイン'}</span>
-                  </button>
-                )}
+
+                  {authToken && (
+                    <button
+                      type="button"
+                      disabled={isSyncingEvents}
+                      onClick={() => {
+                        refreshEvents();
+                        onClose();
+                      }}
+                      className="px-3 py-1 rounded-xl bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white text-xs font-semibold flex items-center gap-1.5 transition active:scale-95 shadow-xs shrink-0"
+                    >
+                      <RotateCcw className={`w-3.5 h-3.5 ${isSyncingEvents ? 'animate-spin' : ''}`} />
+                      <span>{isSyncingEvents ? '同期中...' : '全期間を再同期'}</span>
+                    </button>
+                  )}
+                </div>
               </div>
 
               {loginError && (
