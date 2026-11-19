@@ -55,18 +55,34 @@ export const VerticalDayRow: React.FC<VerticalDayRowProps> = ({
 
   const thisDateStr = formatLocalDate(date);
 
-  // Filter events: in vertical view, multi-day non-start days don't repeat title chip
-  const visibleChips = events.filter((ev) => {
+  // Filter & sort events:
+  // In vertical view, multi-day non-start days don't repeat the title chip (covered by arrow).
+  // Multi-day start events are strictly sorted to the FIRST slot so that multi-day arrows
+  // always emerge cleanly from the primary left rail at x=76px without colliding with single-day events.
+  const isMultiDay = (ev: CalendarEvent) => {
     const startStr = ev.start.date || ev.start.dateTime?.slice(0, 10);
     const endStr = ev.end.date || ev.end.dateTime?.slice(0, 10);
-    const isMultiDay = startStr && endStr && startStr !== endStr;
+    return !!startStr && !!endStr && startStr !== endStr;
+  };
 
-    // If multi-day, only render chip on start day
-    if (isMultiDay && startStr !== thisDateStr) {
-      return false;
-    }
-    return true;
-  });
+  const visibleChips = events
+    .filter((ev) => {
+      const startStr = ev.start.date || ev.start.dateTime?.slice(0, 10);
+      const isMulti = isMultiDay(ev);
+
+      // If multi-day, only render chip on start day
+      if (isMulti && startStr !== thisDateStr) {
+        return false;
+      }
+      return true;
+    })
+    .sort((a, b) => {
+      const aMulti = isMultiDay(a);
+      const bMulti = isMultiDay(b);
+      if (aMulti && !bMulti) return -1;
+      if (!aMulti && bMulti) return 1;
+      return 0;
+    });
 
   const handleDragOver = (e: React.DragEvent) => {
     e.preventDefault();

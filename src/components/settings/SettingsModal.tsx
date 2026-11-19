@@ -37,6 +37,8 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
     setAllCalendarsVisible,
     arrowSettings,
     updateArrowSettings,
+    timedEventStyle,
+    setTimedEventStyle,
     authToken,
     setAuthToken,
     theme,
@@ -218,7 +220,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
               }`}
             >
               <Sliders className="w-3.5 h-3.5" />
-              <span>矢印デザイン</span>
+              <span>デザイン・表示</span>
             </button>
           </div>
         </div>
@@ -470,6 +472,44 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
           {/* TAB 3: ARROW STYLES */}
           {activeTab === 'arrows' && (
             <div className="space-y-4">
+              {/* Timed Event Display Style Selection */}
+              <div>
+                <label className="text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1.5 block">
+                  時間指定予定の表示スタイル
+                </label>
+                <div className="grid grid-cols-2 gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setTimedEventStyle('badge')}
+                    className={`p-2.5 rounded-2xl border text-left transition flex flex-col gap-1.5 cursor-pointer ${
+                      timedEventStyle === 'badge'
+                        ? 'border-blue-500 bg-blue-50/60 dark:bg-blue-950/40 text-blue-600 dark:text-blue-400 font-bold shadow-2xs'
+                        : 'border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-300'
+                    }`}
+                  >
+                    <span className="text-xs font-semibold">枠囲みバッジ</span>
+                    <div className="px-2 py-0.5 rounded-lg border border-blue-400/60 bg-blue-100/50 dark:bg-blue-900/40 text-[10px] text-blue-800 dark:text-blue-200 truncate">
+                      10:00 会議
+                    </div>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => setTimedEventStyle('underbar')}
+                    className={`p-2.5 rounded-2xl border text-left transition flex flex-col gap-1.5 cursor-pointer ${
+                      timedEventStyle === 'underbar'
+                        ? 'border-blue-500 bg-blue-50/60 dark:bg-blue-950/40 text-blue-600 dark:text-blue-400 font-bold shadow-2xs'
+                        : 'border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-300'
+                    }`}
+                  >
+                    <span className="text-xs font-semibold">アンダーバー (下線)</span>
+                    <div className="px-1 py-0.5 border-b-[2.5px] border-blue-500 text-[10px] text-slate-800 dark:text-slate-100 truncate">
+                      10:00 会議
+                    </div>
+                  </button>
+                </div>
+              </div>
+
               {/* Live Preview Box */}
               <div className="h-24 bg-slate-100 dark:bg-slate-800 rounded-2xl flex items-center justify-center relative border border-slate-200 dark:border-slate-700">
                 <div className="text-center absolute top-2 left-3 text-[10px] text-slate-400 font-semibold">

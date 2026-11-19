@@ -17,14 +17,14 @@ import { YearMonthPickerModal } from './components/pickers/YearMonthPickerModal'
 import { CalendarViewType } from './types/view';
 import { CalendarEvent } from './types/calendar';
 import { formatLocalDate, parseLocalDate, addMonthsSafe } from './services/dateUtils';
-import { Check, RefreshCw } from 'lucide-react';
+import { Check, RefreshCw, Copy } from 'lucide-react';
 
 const STORAGE_KEY_VIEW = 'calhub_view_type_v1';
 
 export const CalHubApp: React.FC = () => {
   const { setAuthToken } = useCalendar();
   const { addEvent, syncStatusMessage, isSyncingEvents } = useEvents();
-  const { copiedEvent } = useClipboard();
+  const { copiedEvent, copyToastMessage } = useClipboard();
 
   const [currentDate, setCurrentDate] = useState<Date>(new Date());
   const [pasteToast, setPasteToast] = useState<string | null>(null);
@@ -246,12 +246,16 @@ export const CalHubApp: React.FC = () => {
         </div>
       )}
 
-      {/* Paste Notification Toast */}
-      {pasteToast && (
+      {/* Copy & Paste Toast Notifications */}
+      {(copyToastMessage || pasteToast) && (
         <div className="fixed top-16 inset-x-0 z-50 flex justify-center pointer-events-none animate-in fade-in slide-in-from-top-2 duration-150">
-          <div className="bg-slate-900/90 text-white dark:bg-slate-800/95 px-4 py-2 rounded-2xl shadow-xl flex items-center gap-2 text-xs font-semibold backdrop-blur-md border border-slate-700/60">
-            <Check className="w-4 h-4 text-emerald-400" />
-            <span>{pasteToast}</span>
+          <div className="bg-slate-900/95 text-white dark:bg-slate-800/95 px-4 py-2.5 rounded-2xl shadow-2xl flex items-center gap-2 text-xs font-semibold backdrop-blur-md border border-slate-700/80 max-w-sm">
+            {copyToastMessage ? (
+              <Copy className="w-4 h-4 text-blue-400 shrink-0" />
+            ) : (
+              <Check className="w-4 h-4 text-emerald-400 shrink-0" />
+            )}
+            <span className="truncate">{copyToastMessage || pasteToast}</span>
           </div>
         </div>
       )}

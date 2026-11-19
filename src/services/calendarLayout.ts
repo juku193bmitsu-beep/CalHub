@@ -150,3 +150,140 @@ export function hexToRgba(hex: string, alpha: number): string {
   const b = num & 255;
   return `rgba(${r}, ${g}, ${b}, ${alpha})`;
 }
+
+export interface TimedEventLayoutItem {
+  event: CalendarEvent;
+  colIndex: number;
+  totalCols: number;
+  topPx: number;
+  heightPx: number;
+  leftPercent: number;
+  widthPercent: number;
+  timeStr: string;
+}
+
+/**
+ * Computes side-by-side column positioning for overlapping timed events in a day column.
+ * - Clusters mutually overlapping events.
+ * - Assigns the lowest available column index to each event within the cluster.
+ * - Computes width = 100% / totalCols and left = colIndex * width so all events are visible without covering each other.
+ */
+export function computeOverlappingTimedLayout(
+  events: CalendarEvent[],
+  hourHeight: number
+): TimedEventLayoutItem[] {
+  if (!events || events.length === 0) return [];
+
+  interface ParsedItem {
+    event: CalendarEvent;
+    startMin: number;
+    endMin: number;
+    timeStr: string;
+    colIndex: number;
+  }
+
+  const parsedList: ParsedItem[] = events
+    .filter((ev) => !!ev.start.dateTime)
+    .map((ev) => {
+      const s = new Date(ev.start.dateTime!);
+      const e = new Date(ev.end.dateTime || ev.start.dateTime!);
+      const startMin = s.getHours() * 60 + s.getMinutes();
+      let durationMin = (e.getTime() - s.getTime()) / (1000 * 60);
+      if (isNaN(durationMin) || durationMin < 20) durationMin = 30;
+      const endMin = Math.min(24 * 60, startMin + durationMin);
+
+      const timeStr = `${s.toLocaleTimeString('ja-JP', {
+        hour: '2-digit',
+        minute: '2-digit',
+        hour12: false,
+      })} - ${e.toLocaleTimeString('ja-JP', {
+        hour: '2-digit',
+        minute: '2-digit',
+        hour12: false,
+      })}`;
+
+      return {
+        event: ev,
+        startMin,
+        endMin,
+        timeStr,
+        colIndex: 0,
+      };
+    })
+    .sort((a, b) => {
+      if (a.startMin !== b.startMin) return a.startMin - b.startMin;
+      return (b.endMin - b.startMin) - (a.endMin - a.startMin);
+    });
+
+  if (parsedList.length === 0) return [];
+
+  // Group into connected overlapping clusters
+  const clusters: ParsedItem[][] = [];
+  let currentCluster: ParsedItem[] = [];
+  let currentClusterEnd = -1;
+
+  for (const item of parsedList) {
+    if (currentCluster.length === 0) {
+      currentCluster.push(item);
+      currentClusterEnd = item.endMin;
+    } else if (item.startMin < currentClusterEnd) {
+      // Overlaps with current cluster
+      currentCluster.push(item);
+      currentClusterEnd = Math.max(currentClusterEnd, item.endMin);
+    } else {
+      // Starts after current cluster ends -> finalize and begin new cluster
+      clusters.push(currentCluster);
+      currentCluster = [item];
+      currentClusterEnd = item.endMin;
+    }
+  }
+  if (currentCluster.length > 0) {
+    clusters.push(currentCluster);
+  }
+
+  const results: TimedEventLayoutItem[] = [];
+
+  for (const cluster of clusters) {
+    // Column track tracking the end time of the last event in each column
+    const colEndTimes: number[] = [];
+
+    for (const item of cluster) {
+      let placedCol = -1;
+      for (let c = 0; c < colEndTimes.length; c++) {
+        if (item.startMin >= colEndTimes[c]) {
+          placedCol = c;
+          colEndTimes[c] = item.endMin;
+          break;
+        }
+      }
+      if (placedCol === -1) {
+        placedCol = colEndTimes.length;
+        colEndTimes.push(item.endMin);
+      }
+      item.colIndex = placedCol;
+    }
+
+    const totalCols = Math.max(1, colEndTimes.length);
+    const colWidthPercent = 100 / totalCols;
+
+    for (const item of cluster) {
+      const topPx = (item.startMin / 60) * hourHeight;
+      const durationMin = item.endMin - item.startMin;
+      const heightPx = Math.max(22, (durationMin / 60) * hourHeight - 2);
+      const leftPercent = item.colIndex * colWidthPercent;
+
+      results.push({
+        event: item.event,
+        colIndex: item.colIndex,
+        totalCols,
+        topPx,
+        heightPx,
+        leftPercent,
+        widthPercent: colWidthPercent,
+        timeStr: item.timeStr,
+      });
+    }
+  }
+
+  return results;
+}

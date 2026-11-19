@@ -1,6 +1,6 @@
 import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import { GoogleCalendar } from '../types/calendar';
-import { ArrowDesignSettings, UserPreferences } from '../types/settings';
+import { ArrowDesignSettings, UserPreferences, TimedEventStyle } from '../types/settings';
 import { MOCK_CALENDARS } from '../services/mockData';
 import { CalendarApiService } from '../services/calendarApi';
 
@@ -17,6 +17,8 @@ interface CalendarContextType {
   setAllCalendarsVisible: (visible: boolean) => void;
   arrowSettings: ArrowDesignSettings;
   updateArrowSettings: (settings: Partial<ArrowDesignSettings>) => void;
+  timedEventStyle: TimedEventStyle;
+  setTimedEventStyle: (style: TimedEventStyle) => void;
   theme: 'light' | 'dark';
   toggleTheme: () => void;
   authToken: string | null;
@@ -103,6 +105,21 @@ export const CalendarProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     return DEFAULT_ARROW_SETTINGS;
   });
 
+  const [timedEventStyle, setTimedEventStyle] = useState<TimedEventStyle>(() => {
+    try {
+      const saved = localStorage.getItem(STORAGE_KEY_PREFS);
+      if (saved) {
+        const parsed: UserPreferences = JSON.parse(saved);
+        if (parsed.timedEventStyle === 'underbar' || parsed.timedEventStyle === 'badge') {
+          return parsed.timedEventStyle;
+        }
+      }
+    } catch {
+      // fallback
+    }
+    return 'badge';
+  });
+
   const [theme, setTheme] = useState<'light' | 'dark'>('light');
 
   // Fetch calendars when token becomes available
@@ -153,13 +170,14 @@ export const CalendarProvider: React.FC<{ children: React.ReactNode }> = ({ chil
       const prefs: Partial<UserPreferences> = {
         visibleCalendarIds: Array.from(visibleCalendarIds),
         arrowSettings,
+        timedEventStyle,
         theme,
       };
       localStorage.setItem(STORAGE_KEY_PREFS, JSON.stringify(prefs));
     } catch (e) {
       console.error('Failed to save preferences to localStorage', e);
     }
-  }, [visibleCalendarIds, arrowSettings, theme]);
+  }, [visibleCalendarIds, arrowSettings, timedEventStyle, theme]);
 
   const toggleCalendarVisibility = (id: string) => {
     setVisibleCalendarIds((prev) => {
@@ -209,6 +227,8 @@ export const CalendarProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         setAllCalendarsVisible,
         arrowSettings,
         updateArrowSettings,
+        timedEventStyle,
+        setTimedEventStyle,
         theme,
         toggleTheme,
         authToken,

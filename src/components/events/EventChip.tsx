@@ -36,11 +36,11 @@ export const EventChip: React.FC<EventChipProps> = ({
   isMultiDayChild = false,
   isDraggable = true,
   showTime = false,
-  isMultiDayStart = false,
+  isMultiDayStart: _isMultiDayStart = false,
 }) => {
   const { copyEvent } = useClipboard();
   const { deleteEvent } = useEvents();
-  const { calendars } = useCalendar();
+  const { calendars, timedEventStyle } = useCalendar();
   const [showMenu, setShowMenu] = useState(false);
   const [menuPos, setMenuPos] = useState<{ x: number; y: number } | null>(null);
   const [isDragging, setIsDragging] = useState(false);
@@ -98,6 +98,7 @@ export const EventChip: React.FC<EventChipProps> = ({
   const handleCopy = (e: React.MouseEvent) => {
     e.stopPropagation();
     copyEvent(event);
+    triggerHaptic('medium');
     setShowMenu(false);
   };
 
@@ -136,7 +137,7 @@ export const EventChip: React.FC<EventChipProps> = ({
     <div
       onContextMenu={handleContextMenu}
       onClick={(e) => e.stopPropagation()}
-      className="relative inline-flex max-w-[170px] sm:max-w-[210px] shrink min-w-0"
+      className="relative inline-flex w-[138px] sm:w-[155px] shrink-0 min-w-0"
     >
       <div
         {...longPressProps}
@@ -151,45 +152,37 @@ export const EventChip: React.FC<EventChipProps> = ({
                 borderColor: 'transparent',
                 color: '#ffffff',
               }
+            : timedEventStyle === 'underbar'
+            ? {
+                backgroundColor: 'transparent',
+                borderBottom: `2.5px solid ${rawColor}`,
+                borderTop: 'none',
+                borderLeft: 'none',
+                borderRight: 'none',
+                borderRadius: '2px',
+              }
             : {
                 backgroundColor: bgColorLight,
                 borderColor: borderColorLight,
               }
         }
-        className={`no-select cursor-grab active:cursor-grabbing transition-all select-none text-xs inline-flex items-center gap-1.5 shadow-2xs border hover:shadow-xs max-w-full overflow-hidden ${
-          isMultiDayStart
-            ? 'rounded-lg pl-1.5 pr-2.5 py-0.5'
-            : 'rounded-lg px-2 py-0.5'
-        } ${
+        className={`w-full no-select cursor-grab active:cursor-grabbing transition-all select-none text-xs flex items-center gap-1.5 shadow-2xs border hover:shadow-xs overflow-hidden ${
           isAllDay
-            ? 'font-medium text-white shadow-xs'
-            : 'font-medium text-slate-800 dark:text-slate-100'
-        } ${isCompact ? 'py-0 text-[10px] px-1.5' : ''} ${
+            ? 'rounded-lg px-2 py-0.5 font-medium text-white shadow-xs'
+            : timedEventStyle === 'underbar'
+            ? 'px-1 py-0.5 font-medium text-slate-800 dark:text-slate-100 shadow-none'
+            : 'rounded-lg px-2 py-0.5 font-medium text-slate-800 dark:text-slate-100'
+        } ${isCompact ? 'h-[20px] text-[10px]' : 'h-[23px]'} ${
           isDragging ? 'opacity-40 scale-95 border-dashed border-blue-400' : ''
         }`}
       >
-        {/* Visual Differentiation & Anchor Pin for Multi-Day Arrow */}
-        {isMultiDayStart ? (
-          <span
-            className="w-2 h-2 rounded-full bg-white ring-2 ring-white/40 shrink-0 shadow-xs"
-            title="複数日予定の起点"
-          />
-        ) : isAllDay ? (
-          <span className="w-1.5 h-1.5 rounded-full bg-white/70 shrink-0" />
-        ) : (
-          <span
-            className="w-2 h-2 rounded-full shrink-0 shadow-xs ring-1 ring-black/10 dark:ring-white/20"
-            style={{ backgroundColor: rawColor }}
-          />
-        )}
-
         {timeText && (
-          <span className="text-[10px] opacity-80 font-normal tabular-nums shrink-0">
+          <span className="text-[10px] opacity-75 font-normal tabular-nums shrink-0">
             {timeText}
           </span>
         )}
 
-        <span className="truncate leading-tight font-medium tracking-tight">
+        <span className="truncate leading-tight font-medium tracking-tight flex-1">
           {event.summary || '(タイトルなし)'}
         </span>
       </div>

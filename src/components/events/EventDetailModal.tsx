@@ -2,10 +2,12 @@ import React, { useState, useEffect } from 'react';
 import { CalendarEvent } from '../../types/calendar';
 import { useEvents } from '../../contexts/EventContext';
 import { useCalendar } from '../../contexts/CalendarContext';
+import { useClipboard } from '../../contexts/ClipboardContext';
 import { parseLinksInText } from '../../services/urlParser';
 import { getJapaneseHoliday } from '../../constants/holidays';
 import { DrumTimePicker } from '../pickers/DrumTimePicker';
 import { formatLocalDate, isEventOnDate } from '../../services/dateUtils';
+import { triggerHaptic } from '../../services/gestureUtils';
 import {
   X,
   ChevronLeft,
@@ -17,6 +19,8 @@ import {
   Clock,
   ExternalLink,
   Edit3,
+  Copy,
+  Check,
 } from 'lucide-react';
 
 interface EventDetailModalProps {
@@ -34,10 +38,33 @@ export const EventDetailModal: React.FC<EventDetailModalProps> = ({
 }) => {
   const { filteredEvents, addEvent, updateEvent, deleteEvent } = useEvents();
   const { calendars } = useCalendar();
+  const { copiedEvent, copyEvent, clearClipboard } = useClipboard();
 
   const [currentDate, setCurrentDate] = useState<Date>(initialDate || new Date());
   const [editingEvent, setEditingEvent] = useState<CalendarEvent | null>(targetEvent);
   const [isCreatingNew, setIsCreatingNew] = useState(false);
+
+  // Track visualViewport height dynamically for mobile software keyboard adjustments
+  const [viewportHeight, setViewportHeight] = useState<number | null>(() => {
+    return typeof window !== 'undefined' && window.visualViewport ? window.visualViewport.height : null;
+  });
+
+  useEffect(() => {
+    if (typeof window === 'undefined' || !window.visualViewport) return;
+
+    const handleResize = () => {
+      if (window.visualViewport) {
+        setViewportHeight(window.visualViewport.height);
+      }
+    };
+
+    window.visualViewport.addEventListener('resize', handleResize);
+    window.visualViewport.addEventListener('scroll', handleResize);
+    return () => {
+      window.visualViewport?.removeEventListener('resize', handleResize);
+      window.visualViewport?.removeEventListener('scroll', handleResize);
+    };
+  }, []);
 
   // Form states
   const [formSummary, setFormSummary] = useState('');
@@ -238,15 +265,64 @@ export const EventDetailModal: React.FC<EventDetailModalProps> = ({
     }
   };
 
+  // One-tap paste to current date
+  const handlePasteToCurrentDay = () => {
+    if (!copiedEvent) return;
+    const targetDateStr = formatLocalDate(currentDate);
+
+    if (copiedEvent.isAllDay || copiedEvent.start.date) {
+      addEvent({
+        ...copiedEvent,
+        start: { date: targetDateStr },
+        end: { date: targetDateStr },
+      });
+    } else {
+      const oldStart = new Date(copiedEvent.start.dateTime || '');
+      const oldEnd = new Date(copiedEvent.end.dateTime || '');
+      const durationMs = oldEnd.getTime() - oldStart.getTime();
+
+      const newStart = new Date(oldStart);
+      newStart.setFullYear(currentDate.getFullYear(), currentDate.getMonth(), currentDate.getDate());
+      const newEnd = new Date(newStart.getTime() + durationMs);
+
+      addEvent({
+        ...copiedEvent,
+        start: { dateTime: newStart.toISOString() },
+        end: { dateTime: newEnd.toISOString() },
+      });
+    }
+    triggerHaptic('medium');
+  };
+
+  const handleCopyFromModal = (ev: CalendarEvent) => {
+    copyEvent(ev);
+  };
+
   return (
-    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4 bg-black/60 backdrop-blur-xs animate-in fade-in duration-150">
-      <div className="bg-white dark:bg-slate-900 rounded-t-3xl sm:rounded-3xl max-w-lg w-full max-h-[92dvh] flex flex-col shadow-2xl border border-slate-200 dark:border-slate-800 overflow-hidden">
+    <div
+      style={
+        viewportHeight
+          ? { height: `${viewportHeight}px`, maxHeight: `${viewportHeight}px` }
+          : undefined
+      }
+      className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4 bg-black/60 backdrop-blur-xs animate-in fade-in duration-150"
+    >
+      <div
+        style={
+          viewportHeight
+            ? { maxHeight: `${viewportHeight}px`, height: isCreatingNew || editingEvent ? `${Math.min(viewportHeight, 620)}px` : undefined }
+            : undefined
+        }
+        className="bg-white dark:bg-slate-900 rounded-t-3xl sm:rounded-3xl max-w-lg w-full max-h-[92dvh] flex flex-col shadow-2xl border border-slate-200 dark:border-slate-800 overflow-hidden"
+      >
         {/* Top Header / Day Navigation */}
         <div className="px-4 py-3 border-b border-slate-200/80 dark:border-slate-800 flex items-center justify-between shrink-0 bg-slate-50/70 dark:bg-slate-950/40">
           <div className="flex items-center gap-1">
             <button
+              type="button"
               onClick={handlePrevDay}
-              className="p-1 rounded-lg text-slate-500 hover:bg-slate-200 dark:hover:bg-slate-800"
+              className="p-1 rounded-lg text-slate-500 hover:bg-slate-200 dark:hover:bg-slate-800 active:scale-90 transition"
+              title="前日"
             >
               <ChevronLeft className="w-5 h-5" />
             </button>
@@ -272,8 +348,10 @@ export const EventDetailModal: React.FC<EventDetailModalProps> = ({
               )}
             </div>
             <button
+              type="button"
               onClick={handleNextDay}
-              className="p-1 rounded-lg text-slate-500 hover:bg-slate-200 dark:hover:bg-slate-800"
+              className="p-1 rounded-lg text-slate-500 hover:bg-slate-200 dark:hover:bg-slate-800 active:scale-90 transition"
+              title="翌日"
             >
               <ChevronRight className="w-5 h-5" />
             </button>
@@ -282,20 +360,23 @@ export const EventDetailModal: React.FC<EventDetailModalProps> = ({
           <div className="flex items-center gap-1">
             {!isCreatingNew && !editingEvent && (
               <button
+                type="button"
                 onClick={handleStartNewForm}
-                className="px-2.5 py-1 text-xs font-semibold rounded-xl bg-blue-600 hover:bg-blue-700 text-white flex items-center gap-1 transition active:scale-95"
+                className="px-2.5 py-1 text-xs font-semibold rounded-xl bg-blue-600 hover:bg-blue-700 text-white flex items-center gap-1 transition active:scale-95 shadow-xs"
               >
                 <Plus className="w-3.5 h-3.5" />
                 <span>新規作成</span>
               </button>
             )}
             <button
+              type="button"
               onClick={() => {
                 setIsCreatingNew(false);
                 setEditingEvent(null);
                 onClose();
               }}
-              className="p-1.5 rounded-full text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-800"
+              className="p-1.5 rounded-full text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-800 transition"
+              title="閉じる"
             >
               <X className="w-5 h-5" />
             </button>
@@ -303,10 +384,10 @@ export const EventDetailModal: React.FC<EventDetailModalProps> = ({
         </div>
 
         {/* Modal Body: List View OR Create/Edit Form */}
-        <div className="flex-1 overflow-y-auto p-4">
+        <div className="flex-1 overflow-y-auto p-4 space-y-3">
           {isCreatingNew || editingEvent ? (
             /* Create / Edit Form */
-            <form onSubmit={handleSaveForm} className="space-y-4">
+            <form id="event-detail-form" onSubmit={handleSaveForm} className="space-y-3.5 pb-2">
               <div>
                 <label className="text-xs font-semibold text-slate-600 dark:text-slate-300 block mb-1">
                   タイトル
@@ -341,7 +422,7 @@ export const EventDetailModal: React.FC<EventDetailModalProps> = ({
               </div>
 
               {/* All-day switch */}
-              <div className="flex items-center justify-between py-1">
+              <div className="flex items-center justify-between py-0.5">
                 <span className="text-xs font-semibold text-slate-600 dark:text-slate-300">
                   終日予定
                 </span>
@@ -355,7 +436,7 @@ export const EventDetailModal: React.FC<EventDetailModalProps> = ({
 
               {/* 24h Drum Time Pickers (if not all day) */}
               {!formIsAllDay && (
-                <div className="space-y-3 pt-1">
+                <div className="space-y-3 pt-0.5">
                   <div>
                     <label className="text-xs font-semibold text-slate-600 dark:text-slate-300 block mb-1 flex items-center gap-1">
                       <Clock className="w-3.5 h-3.5 text-blue-500" />
@@ -404,53 +485,61 @@ export const EventDetailModal: React.FC<EventDetailModalProps> = ({
                   メモ・備考（リンクは自動でワンタップ起動可能）
                 </label>
                 <textarea
-                  rows={3}
+                  rows={2}
                   placeholder="詳細メモ、参考URL（https://...）など"
                   value={formDescription}
                   onChange={(e) => setFormDescription(e.target.value)}
                   className="w-full px-3 py-2 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white text-sm focus:outline-none"
                 />
               </div>
-
-              {/* Action Buttons */}
-              <div className="flex items-center gap-2 pt-2">
-                <button
-                  type="submit"
-                  className="flex-1 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-semibold text-sm transition active:scale-98"
-                >
-                  保存する
-                </button>
-                <button
-                  type="button"
-                  onClick={() => {
-                    setIsCreatingNew(false);
-                    setEditingEvent(null);
-                  }}
-                  className="px-4 py-2.5 rounded-xl border border-slate-300 dark:border-slate-700 text-slate-600 dark:text-slate-300 font-medium text-sm hover:bg-slate-100 dark:hover:bg-slate-800"
-                >
-                  キャンセル
-                </button>
-                {editingEvent && (
-                  <button
-                    type="button"
-                    onClick={handleDeleteCurrent}
-                    className="p-2.5 rounded-xl text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-950/40 border border-rose-200 dark:border-rose-900/60"
-                    title="削除"
-                  >
-                    <Trash2 className="w-5 h-5" />
-                  </button>
-                )}
-              </div>
             </form>
           ) : (
             /* Day Event List (View Mode) */
             <div className="space-y-3">
+              {/* Highlighted Paste Banner when clipboard holds an event */}
+              {copiedEvent && (
+                <div className="p-3 rounded-2xl bg-blue-50/95 dark:bg-blue-950/60 border border-blue-200 dark:border-blue-800 flex items-center justify-between gap-2 shadow-xs animate-in fade-in">
+                  <div className="flex items-center gap-2 min-w-0">
+                    <div className="w-7 h-7 rounded-full bg-blue-500/20 text-blue-600 dark:text-blue-400 flex items-center justify-center shrink-0">
+                      <Copy className="w-3.5 h-3.5" />
+                    </div>
+                    <div className="min-w-0">
+                      <p className="text-xs font-bold text-blue-900 dark:text-blue-100 truncate">
+                        コピー中:「{copiedEvent.summary}」
+                      </p>
+                      <p className="text-[10px] text-blue-600 dark:text-blue-400">
+                        この日（{currentDate.getMonth() + 1}/{currentDate.getDate()}）に貼り付け
+                      </p>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-1.5 shrink-0">
+                    <button
+                      type="button"
+                      onClick={handlePasteToCurrentDay}
+                      className="px-3 py-1.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs flex items-center gap-1 transition active:scale-95 shadow-xs cursor-pointer"
+                    >
+                      <Check className="w-3.5 h-3.5" />
+                      <span>貼り付け</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={clearClipboard}
+                      className="p-1.5 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 rounded-lg cursor-pointer"
+                      title="コピー解除"
+                    >
+                      <X className="w-4 h-4" />
+                    </button>
+                  </div>
+                </div>
+              )}
+
               {dayEvents.length === 0 ? (
                 <div className="text-center py-12 flex flex-col items-center gap-3">
                   <p className="text-slate-400 dark:text-slate-500 text-xs">
                     この日の予定はありません。
                   </p>
                   <button
+                    type="button"
                     onClick={handleStartNewForm}
                     className="px-3.5 py-1.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold flex items-center gap-1.5 transition active:scale-95 shadow-xs"
                   >
@@ -479,16 +568,28 @@ export const EventDetailModal: React.FC<EventDetailModalProps> = ({
                             {ev.summary}
                           </h4>
                         </div>
-                        <button
-                          onClick={() => {
-                            setEditingEvent(ev);
-                            populateForm(ev);
-                          }}
-                          className="p-1 rounded-lg text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-700"
-                          title="予定を編集"
-                        >
-                          <Edit3 className="w-4 h-4" />
-                        </button>
+                        {/* Action Buttons: Copy & Edit */}
+                        <div className="flex items-center gap-1">
+                          <button
+                            type="button"
+                            onClick={() => handleCopyFromModal(ev)}
+                            className="p-1.5 rounded-lg text-slate-400 hover:text-blue-600 hover:bg-blue-50 dark:hover:bg-slate-700 active:scale-90 transition cursor-pointer"
+                            title="予定をコピー"
+                          >
+                            <Copy className="w-4 h-4" />
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setEditingEvent(ev);
+                              populateForm(ev);
+                            }}
+                            className="p-1.5 rounded-lg text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-700 active:scale-90 transition cursor-pointer"
+                            title="予定を編集"
+                          >
+                            <Edit3 className="w-4 h-4" />
+                          </button>
+                        </div>
                       </div>
 
                       {/* Time */}
@@ -567,6 +668,54 @@ export const EventDetailModal: React.FC<EventDetailModalProps> = ({
             </div>
           )}
         </div>
+
+        {/* Sticky Action Footer for Create / Edit Form: Always accessible above mobile keyboard! */}
+        {(isCreatingNew || editingEvent) && (
+          <div className="px-4 py-3 border-t border-slate-200/80 dark:border-slate-800 bg-slate-50/95 dark:bg-slate-950/80 backdrop-blur-md flex items-center justify-between gap-2 shrink-0">
+            <div className="flex items-center gap-1.5">
+              {editingEvent && (
+                <>
+                  <button
+                    type="button"
+                    onClick={() => handleCopyFromModal(editingEvent)}
+                    className="p-2 rounded-xl border border-slate-300 dark:border-slate-700 text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 transition active:scale-95"
+                    title="この予定をコピー"
+                  >
+                    <Copy className="w-4 h-4 text-blue-500" />
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleDeleteCurrent}
+                    className="p-2 rounded-xl text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-950/40 border border-rose-200 dark:border-rose-900/60 transition active:scale-95"
+                    title="削除"
+                  >
+                    <Trash2 className="w-4 h-4" />
+                  </button>
+                </>
+              )}
+            </div>
+
+            <div className="flex items-center gap-2 flex-1 justify-end">
+              <button
+                type="button"
+                onClick={() => {
+                  setIsCreatingNew(false);
+                  setEditingEvent(null);
+                }}
+                className="px-4 py-2 rounded-xl border border-slate-300 dark:border-slate-700 text-slate-600 dark:text-slate-300 font-medium text-xs hover:bg-slate-100 dark:hover:bg-slate-800 transition"
+              >
+                キャンセル
+              </button>
+              <button
+                type="submit"
+                form="event-detail-form"
+                className="px-5 py-2 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs transition active:scale-95 shadow-md shadow-blue-500/20"
+              >
+                保存する
+              </button>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );

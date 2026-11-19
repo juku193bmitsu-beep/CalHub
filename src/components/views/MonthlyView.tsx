@@ -1,5 +1,6 @@
 import React, { useState, useMemo, useRef, useEffect, useCallback } from 'react';
 import { useEvents } from '../../contexts/EventContext';
+import { useCalendar } from '../../contexts/CalendarContext';
 import { CalendarEvent } from '../../types/calendar';
 import { getJapaneseHoliday } from '../../constants/holidays';
 import { isClickSuppressed, suppressNextClicks, triggerHaptic } from '../../services/gestureUtils';
@@ -40,6 +41,7 @@ const MonthGrid: React.FC<MonthGridProps> = ({
   onDragLeave,
   onDrop,
 }) => {
+  const { timedEventStyle } = useCalendar();
   const year = date.getFullYear();
   const month = date.getMonth();
 
@@ -236,6 +238,7 @@ const MonthGrid: React.FC<MonthGridProps> = ({
                   );
                 }
 
+                const isUnderbar = timedEventStyle === 'underbar';
                 const bgColorLight = hexToRgba(rawColor, 0.22);
                 const borderColorLight = hexToRgba(rawColor, 0.55);
 
@@ -256,16 +259,15 @@ const MonthGrid: React.FC<MonthGridProps> = ({
                       width: `calc(${widthPercent}% - 4px)`,
                       top: `${topPx}px`,
                       height: '19px',
-                      backgroundColor: bgColorLight,
-                      borderColor: borderColorLight,
+                      backgroundColor: isUnderbar ? 'transparent' : bgColorLight,
+                      borderColor: isUnderbar ? 'transparent' : borderColorLight,
+                      borderBottom: isUnderbar ? `2.5px solid ${rawColor}` : undefined,
                     }}
-                    className="absolute pointer-events-auto flex items-center gap-1 px-1.5 text-[10px] font-medium text-slate-800 dark:text-slate-100 rounded-md border shadow-2xs truncate cursor-grab active:cursor-grabbing hover:brightness-95 dark:hover:brightness-110 transition-all select-none"
+                    className={`absolute pointer-events-auto flex items-center px-1 text-[10px] font-medium text-slate-800 dark:text-slate-100 truncate cursor-grab active:cursor-grabbing hover:brightness-95 dark:hover:brightness-110 transition-all select-none ${
+                      isUnderbar ? 'rounded-none' : 'rounded-md border shadow-2xs'
+                    }`}
                     title={event.summary}
                   >
-                    <span
-                      className="w-1.5 h-1.5 rounded-full shrink-0 shadow-2xs"
-                      style={{ backgroundColor: rawColor }}
-                    />
                     <span className="truncate">{event.summary || '(予定なし)'}</span>
                   </div>
                 );

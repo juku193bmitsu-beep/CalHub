@@ -1,10 +1,11 @@
 import React, { useRef, useEffect, useMemo, useState } from 'react';
 import { useEvents } from '../../contexts/EventContext';
+import { useCalendar } from '../../contexts/CalendarContext';
 import { CalendarEvent } from '../../types/calendar';
 import { getJapaneseHoliday } from '../../constants/holidays';
 import { useSwipeNavigation } from '../../hooks/useSwipeNavigation';
 import { formatLocalDate, isEventOnDate, getEventStartDateStr, getEventEndDateInclusiveStr } from '../../services/dateUtils';
-import { computeWeekLayout, hexToRgba } from '../../services/calendarLayout';
+import { computeWeekLayout, computeOverlappingTimedLayout, hexToRgba } from '../../services/calendarLayout';
 import { isClickSuppressed, suppressNextClicks, triggerHaptic } from '../../services/gestureUtils';
 
 interface WeeklyTimeGridViewProps {
@@ -25,6 +26,7 @@ export const WeeklyTimeGridView: React.FC<WeeklyTimeGridViewProps> = ({
   onNextWeek,
 }) => {
   const { filteredEvents, moveEventDate, updateEvent } = useEvents();
+  const { timedEventStyle } = useCalendar();
   const scrollContainerRef = useRef<HTMLDivElement | null>(null);
 
   const { onTouchStart, onTouchMove, onTouchEnd, onTouchCancel } = useSwipeNavigation({
@@ -368,32 +370,13 @@ export const WeeklyTimeGridView: React.FC<WeeklyTimeGridViewProps> = ({
                   />
                 ))}
 
-                {/* Timed Event Blocks */}
-                {timedEvents.map((ev) => {
-                  const s = new Date(ev.start.dateTime || '');
-                  const e = new Date(ev.end.dateTime || '');
-                  const startMinutes = s.getHours() * 60 + s.getMinutes();
-                  const durationMinutes = Math.max(
-                    20,
-                    (e.getTime() - s.getTime()) / (1000 * 60)
-                  );
-
-                  const top = (startMinutes / 60) * HOUR_HEIGHT;
-                  const height = Math.max(22, (durationMinutes / 60) * HOUR_HEIGHT - 2);
-
+                {/* Timed Event Blocks with Overlap Column Layout */}
+                {computeOverlappingTimedLayout(timedEvents, HOUR_HEIGHT).map((item) => {
+                  const { event: ev, topPx, heightPx, leftPercent, widthPercent, timeStr } = item;
                   const rawColor = ev.backgroundColor || '#039be5';
-                  const bgTint = hexToRgba(rawColor, 0.16);
-                  const borderCol = hexToRgba(rawColor, 0.35);
-
-                  const timeStr = `${s.toLocaleTimeString('ja-JP', {
-                    hour: '2-digit',
-                    minute: '2-digit',
-                    hour12: false,
-                  })} - ${e.toLocaleTimeString('ja-JP', {
-                    hour: '2-digit',
-                    minute: '2-digit',
-                    hour12: false,
-                  })}`;
+                  const isUnderbar = timedEventStyle === 'underbar';
+                  const bgTint = hexToRgba(rawColor, isUnderbar ? 0.06 : 0.18);
+                  const borderCol = hexToRgba(rawColor, 0.4);
 
                   return (
                     <div
@@ -408,24 +391,31 @@ export const WeeklyTimeGridView: React.FC<WeeklyTimeGridViewProps> = ({
                         handleSafeEventClick(ev);
                       }}
                       style={{
-                        top: `${top}px`,
-                        height: `${height}px`,
-                        backgroundColor: bgTint,
-                        borderColor: borderCol,
-                        borderLeftColor: rawColor,
+                        top: `${topPx}px`,
+                        height: `${heightPx}px`,
+                        left: `calc(${leftPercent}% + 1px)`,
+                        width: `calc(${widthPercent}% - 2px)`,
+                        backgroundColor: isUnderbar ? 'transparent' : bgTint,
+                        borderColor: isUnderbar ? 'transparent' : borderCol,
+                        borderBottom: isUnderbar ? `3px solid ${rawColor}` : undefined,
+                        borderLeftColor: isUnderbar ? 'transparent' : rawColor,
                       }}
-                      className="absolute inset-x-0.5 rounded-lg p-1 border border-l-4 shadow-2xs hover:shadow-xs transition-all z-10 overflow-hidden cursor-grab active:cursor-grabbing hover:brightness-105"
+                      className={`absolute rounded-lg p-1 z-10 overflow-hidden cursor-grab active:cursor-grabbing hover:brightness-105 transition-all select-none ${
+                        isUnderbar
+                          ? 'hover:bg-slate-50/50 dark:hover:bg-slate-800/30'
+                          : 'border border-l-4 shadow-2xs hover:shadow-xs'
+                      }`}
                       title={`${ev.summary} (${timeStr})`}
                     >
-                      <div className="text-[11px] font-semibold text-slate-900 dark:text-white truncate leading-tight">
+                      <div className="text-[10px] sm:text-[11px] font-semibold text-slate-900 dark:text-white truncate leading-tight">
                         {ev.summary}
                       </div>
-                      {height >= 34 && (
+                      {heightPx >= 30 && (
                         <div className="text-[9px] text-slate-500 dark:text-slate-400 truncate mt-0.5 tabular-nums">
                           {timeStr}
                         </div>
                       )}
-                      {height >= 50 && ev.location && (
+                      {heightPx >= 46 && ev.location && (
                         <div className="text-[9px] text-slate-400 dark:text-slate-500 truncate mt-0.5">
                           📍 {ev.location}
                         </div>
