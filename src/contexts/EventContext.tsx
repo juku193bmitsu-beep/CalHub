@@ -87,10 +87,7 @@ export const EventProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     }
   }, [events]);
 
-  // Sync events from Google Calendar API in 3 reliable multi-year slices
-  // Slice 1: Recent & Future (currentYear - 1 to currentYear + 1)
-  // Slice 2: Mid Past (currentYear - 5 to currentYear - 2)
-  // Slice 3: Deep Past (currentYear - 10 to currentYear - 6)
+  // Sync events from Google Calendar API in dedicated slices (Future is strictly prioritized from current month, Past is split in 3 slices back 10 years)
   const refreshEvents = useCallback(async () => {
     if (!authToken || visibleCalendarIds.size === 0 || isSyncingRef.current) return;
 
@@ -101,6 +98,8 @@ export const EventProvider: React.FC<{ children: React.ReactNode }> = ({ childre
 
       const now = new Date();
       const currentYear = now.getFullYear();
+      // Start of current month in local time
+      const startOfCurrentMonth = new Date(currentYear, now.getMonth(), 1);
 
       interface TimeSlice {
         name: string;
@@ -109,20 +108,30 @@ export const EventProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       }
 
       const slices: TimeSlice[] = [
+        // 1. Current & Future Slice (PRIORITY: From start of current month up to end of next 2 years)
+        // Starts strictly from current month so orderBy: 'startTime' immediately fetches today, next month, 2027, etc. without being choked by past events!
         {
-          name: `${currentYear - 1}〜${currentYear + 1}年（直近・未来1年）`,
-          timeMin: new Date(currentYear - 1, 0, 1).toISOString(),
-          timeMax: new Date(currentYear + 1, 11, 31, 23, 59, 59).toISOString(),
+          name: `現在〜未来（今月〜${currentYear + 2}年末まで）`,
+          timeMin: startOfCurrentMonth.toISOString(),
+          timeMax: new Date(currentYear + 2, 11, 31, 23, 59, 59).toISOString(),
         },
+        // 2. Recent Past (Past 1 to 3 years back from current month)
         {
-          name: `${currentYear - 5}〜${currentYear - 2}年（過去5年）`,
-          timeMin: new Date(currentYear - 5, 0, 1).toISOString(),
-          timeMax: new Date(currentYear - 2, 11, 31, 23, 59, 59).toISOString(),
+          name: `直近過去（${currentYear - 3}年〜今月まで）`,
+          timeMin: new Date(currentYear - 3, 0, 1).toISOString(),
+          timeMax: startOfCurrentMonth.toISOString(),
         },
+        // 3. Mid Past (Past 4 to 6 years)
         {
-          name: `${currentYear - 10}〜${currentYear - 6}年（過去10年）`,
+          name: `中期過去（${currentYear - 6}〜${currentYear - 3}年）`,
+          timeMin: new Date(currentYear - 6, 0, 1).toISOString(),
+          timeMax: new Date(currentYear - 3, 0, 1).toISOString(),
+        },
+        // 4. Deep Past (Past 7 to 10 years)
+        {
+          name: `長期過去（${currentYear - 10}〜${currentYear - 6}年）`,
           timeMin: new Date(currentYear - 10, 0, 1).toISOString(),
-          timeMax: new Date(currentYear - 6, 11, 31, 23, 59, 59).toISOString(),
+          timeMax: new Date(currentYear - 6, 0, 1).toISOString(),
         },
       ];
 

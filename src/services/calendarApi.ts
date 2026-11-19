@@ -79,7 +79,7 @@ export class CalendarApiService {
     let allItems: any[] = [];
     let pageToken: string | undefined = undefined;
     let pageCount = 0;
-    const MAX_PAGES = 25; // Supports up to 6,250 events per chunk per calendar
+    const MAX_PAGES = 100; // Supports up to 25,000 events per slice without truncating future events
 
     do {
       const params = new URLSearchParams({
