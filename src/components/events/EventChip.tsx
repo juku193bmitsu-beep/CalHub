@@ -136,7 +136,7 @@ export const EventChip: React.FC<EventChipProps> = ({
     <div
       onContextMenu={handleContextMenu}
       onClick={(e) => e.stopPropagation()}
-      className="relative inline-block w-full max-w-full sm:max-w-[240px] shrink min-w-0"
+      className="relative inline-flex max-w-[170px] sm:max-w-[210px] shrink min-w-0"
     >
       <div
         {...longPressProps}
@@ -156,7 +156,7 @@ export const EventChip: React.FC<EventChipProps> = ({
                 borderColor: borderColorLight,
               }
         }
-        className={`no-select cursor-grab active:cursor-grabbing transition-all select-none text-xs flex items-center gap-1.5 shadow-2xs border hover:shadow-xs w-full overflow-hidden ${
+        className={`no-select cursor-grab active:cursor-grabbing transition-all select-none text-xs inline-flex items-center gap-1.5 shadow-2xs border hover:shadow-xs max-w-full overflow-hidden ${
           isMultiDayStart
             ? 'rounded-lg pl-1.5 pr-2.5 py-0.5'
             : 'rounded-lg px-2 py-0.5'
