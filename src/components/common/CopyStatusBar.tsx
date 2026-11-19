@@ -8,7 +8,7 @@ export const CopyStatusBar: React.FC = () => {
   if (!copiedEvent) return null;
 
   return (
-    <div className="fixed bottom-3 inset-x-3 z-50 flex justify-center pointer-events-none animate-in fade-in slide-in-from-bottom-3 duration-200">
+    <div className="fixed bottom-16 sm:bottom-14 inset-x-3 z-40 flex justify-center pointer-events-none animate-in fade-in slide-in-from-bottom-3 duration-200">
       <div className="pointer-events-auto bg-slate-900/95 dark:bg-slate-800/95 text-white backdrop-blur-md px-4 py-2.5 rounded-2xl shadow-xl flex items-center gap-3 border border-slate-700/60 max-w-md w-full justify-between">
         <div className="flex items-center gap-2 min-w-0">
           <div className="w-7 h-7 rounded-full bg-blue-500/20 text-blue-400 flex items-center justify-center shrink-0">

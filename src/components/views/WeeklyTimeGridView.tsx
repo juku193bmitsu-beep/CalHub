@@ -5,6 +5,7 @@ import { getJapaneseHoliday } from '../../constants/holidays';
 import { useSwipeNavigation } from '../../hooks/useSwipeNavigation';
 import { formatLocalDate, isEventOnDate, getEventStartDateStr, getEventEndDateInclusiveStr } from '../../services/dateUtils';
 import { computeWeekLayout, hexToRgba } from '../../services/calendarLayout';
+import { isClickSuppressed, suppressNextClicks, triggerHaptic } from '../../services/gestureUtils';
 
 interface WeeklyTimeGridViewProps {
   currentDate: Date;
@@ -26,10 +27,14 @@ export const WeeklyTimeGridView: React.FC<WeeklyTimeGridViewProps> = ({
   const { filteredEvents, moveEventDate, updateEvent } = useEvents();
   const scrollContainerRef = useRef<HTMLDivElement | null>(null);
 
-  const { onTouchStart, onTouchMove, onTouchEnd } = useSwipeNavigation({
+  const { onTouchStart, onTouchMove, onTouchEnd, onTouchCancel } = useSwipeNavigation({
     onSwipeLeft: onNextWeek,
     onSwipeRight: onPrevWeek,
   });
+
+  const handleScroll = () => {
+    suppressNextClicks(200);
+  };
 
   // Calculate start of current week (Sunday)
   const currentDayOfWeek = currentDate.getDay();
@@ -104,9 +109,23 @@ export const WeeklyTimeGridView: React.FC<WeeklyTimeGridViewProps> = ({
   const currentTimeTop = (currentMinutesTotal / 60) * HOUR_HEIGHT;
 
   const handleCellClick = (date: Date, hour: number) => {
+    if (isClickSuppressed()) return;
+    triggerHaptic('light');
     const targetDate = new Date(date);
     targetDate.setHours(hour, 0, 0, 0);
     onDateClick(targetDate, hour);
+  };
+
+  const handleSafeDateClick = (date: Date) => {
+    if (isClickSuppressed()) return;
+    triggerHaptic('light');
+    onDateClick(date);
+  };
+
+  const handleSafeEventClick = (event: CalendarEvent) => {
+    if (isClickSuppressed()) return;
+    triggerHaptic('light');
+    onEventClick(event);
   };
 
   const handleDragOver = (e: React.DragEvent) => {
@@ -148,6 +167,7 @@ export const WeeklyTimeGridView: React.FC<WeeklyTimeGridViewProps> = ({
       onTouchStart={onTouchStart}
       onTouchMove={onTouchMove}
       onTouchEnd={onTouchEnd}
+      onTouchCancel={onTouchCancel}
       className="flex-1 flex flex-col h-full w-full select-none bg-white dark:bg-slate-900 overflow-hidden"
     >
       {/* 1. Sticky Header: 7 Days & All-Day Event Lane */}
@@ -173,7 +193,7 @@ export const WeeklyTimeGridView: React.FC<WeeklyTimeGridViewProps> = ({
               return (
                 <div
                   key={idx}
-                  onClick={() => onDateClick(date)}
+                  onClick={() => handleSafeDateClick(date)}
                   className={`py-2 px-1 text-center border-r border-slate-200/50 dark:border-slate-800/60 cursor-pointer hover:bg-slate-50 dark:hover:bg-slate-800/40 transition flex flex-col items-center ${
                     isToday ? 'bg-blue-50/40 dark:bg-blue-950/20' : ''
                   }`}
@@ -241,7 +261,7 @@ export const WeeklyTimeGridView: React.FC<WeeklyTimeGridViewProps> = ({
                       }}
                       onClick={(e) => {
                         e.stopPropagation();
-                        onEventClick(event);
+                        handleSafeEventClick(event);
                       }}
                       style={{
                         left: `calc(${leftPercent}% + 2px)`,
@@ -270,6 +290,7 @@ export const WeeklyTimeGridView: React.FC<WeeklyTimeGridViewProps> = ({
       {/* 2. Scrollable 24-Hour Time Grid */}
       <div
         ref={scrollContainerRef}
+        onScroll={handleScroll}
         className="flex-1 overflow-y-auto overflow-x-hidden relative"
       >
         <div className="flex relative" style={{ height: `${24 * HOUR_HEIGHT}px` }}>
@@ -369,7 +390,7 @@ export const WeeklyTimeGridView: React.FC<WeeklyTimeGridViewProps> = ({
                       }}
                       onClick={(clickEv) => {
                         clickEv.stopPropagation();
-                        onEventClick(ev);
+                        handleSafeEventClick(ev);
                       }}
                       style={{
                         top: `${top}px`,

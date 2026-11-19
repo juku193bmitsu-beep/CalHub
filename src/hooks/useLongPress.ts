@@ -1,4 +1,5 @@
 import { useRef, useCallback } from 'react';
+import { suppressNextClicks, triggerHaptic } from '../services/gestureUtils';
 
 interface UseLongPressOptions {
   onLongPress: (e: React.TouchEvent | React.MouseEvent) => void;
@@ -7,28 +8,42 @@ interface UseLongPressOptions {
   threshold?: number;
 }
 
+/**
+ * Enhanced useLongPress hook with movement suppression and synthetic click protection.
+ * - Prevents click triggers if the finger moved beyond the threshold (eliminates false clicks when attempting to swipe/scroll).
+ * - Triggers haptic vibration upon successful long-press.
+ * - Suppresses subsequent clicks so that releasing after a long press or scroll does not trigger child/parent click events.
+ */
 export function useLongPress({
   onLongPress,
   onClick,
   delay = 450,
-  threshold = 10,
+  threshold = 12,
 }: UseLongPressOptions) {
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const isLongPressRef = useRef<boolean>(false);
+  const isMovedRef = useRef<boolean>(false);
   const startPosRef = useRef<{ x: number; y: number } | null>(null);
 
   const start = useCallback(
     (e: React.TouchEvent | React.MouseEvent) => {
-      // Ignore right clicks or non-primary buttons for long press start
+      // Ignore right clicks or non-primary mouse buttons
       if ('button' in e && e.button !== 0) return;
 
       const clientX = 'touches' in e ? e.touches[0].clientX : e.clientX;
       const clientY = 'touches' in e ? e.touches[0].clientY : e.clientY;
       startPosRef.current = { x: clientX, y: clientY };
       isLongPressRef.current = false;
+      isMovedRef.current = false;
+
+      if (timerRef.current) {
+        clearTimeout(timerRef.current);
+      }
 
       timerRef.current = setTimeout(() => {
         isLongPressRef.current = true;
+        triggerHaptic('medium');
+        suppressNextClicks(450);
         onLongPress(e);
       }, delay);
     },
@@ -48,14 +63,23 @@ export function useLongPress({
         return;
       }
 
-      if (shouldTriggerClick && !isLongPressRef.current) {
+      const wasMoved = isMovedRef.current;
+      const wasLongPress = isLongPressRef.current;
+
+      if (wasMoved || wasLongPress) {
+        // Finger moved or long-press fired: extinguish any stray clicks
+        suppressNextClicks(350);
+      } else if (shouldTriggerClick) {
+        // Only trigger click when user distinctly tapped without moving or holding
         if ('button' in e) {
           onClick?.(e as React.MouseEvent);
         } else {
           onClick?.();
         }
       }
+
       startPosRef.current = null;
+      isMovedRef.current = false;
     },
     [onClick]
   );
@@ -71,8 +95,9 @@ export function useLongPress({
         clientY - startPosRef.current.y
       );
 
-      // Cancel long press timer if moved more than threshold
+      // Cancel long press timer and flag moved if dragged beyond threshold
       if (dist > threshold) {
+        isMovedRef.current = true;
         if (timerRef.current) {
           clearTimeout(timerRef.current);
           timerRef.current = null;
@@ -86,6 +111,7 @@ export function useLongPress({
     onTouchStart: start,
     onTouchEnd: (e: React.TouchEvent) => clear(e, true),
     onTouchMove: move,
+    onTouchCancel: (e: React.TouchEvent) => clear(e, false),
     onMouseDown: start,
     onMouseUp: (e: React.MouseEvent) => clear(e, true),
     onMouseMove: move,

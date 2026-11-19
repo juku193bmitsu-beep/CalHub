@@ -159,30 +159,14 @@ export const CalHubApp: React.FC = () => {
 
   return (
     <div className="flex flex-col h-full w-full max-w-7xl mx-auto bg-white dark:bg-slate-900 overflow-hidden relative shadow-2xl">
-      {/* Header */}
-      <Header
-        currentDate={currentDate}
-        viewType={viewType}
-        onViewChange={handleViewChange}
-        onPrev={handlePrev}
-        onNext={handleNext}
-        onToday={handleToday}
-        onOpenSearch={() => setIsSearchOpen(true)}
-        onOpenArrowSettings={() => setIsArrowSettingsOpen(true)}
-        onOpenYearMonthPicker={() => setIsYearMonthPickerOpen(true)}
-      />
-
-      {/* Auth Status & Reconnect Bar */}
-      <AuthBar onTokenChange={setAuthToken} />
-
-      {/* Main View Area with Smooth Page Turn Slide Animation */}
-      <main className="flex-1 flex overflow-hidden relative">
+      {/* Main Calendar View Area (Top to Fill) */}
+      <main className="flex-1 flex overflow-hidden relative pt-safe">
         <div
           key={`${viewType}-${currentDate.getFullYear()}-${currentDate.getMonth()}-${viewType === 'week' || viewType === 'timegrid' ? currentDate.getDate() : ''}`}
           className={`flex-1 flex flex-col h-full w-full overflow-hidden ${
-            flipDirection === 'next'
+            viewType !== 'month' && flipDirection === 'next'
               ? 'animate-page-turn-next'
-              : flipDirection === 'prev'
+              : viewType !== 'month' && flipDirection === 'prev'
               ? 'animate-page-turn-prev'
               : ''
           }`}
@@ -234,6 +218,22 @@ export const CalHubApp: React.FC = () => {
           )}
         </div>
       </main>
+
+      {/* Auth Status & Reconnect Bar (Positioned right above bottom navigation bar) */}
+      <AuthBar onTokenChange={setAuthToken} />
+
+      {/* Bottom Navigation & Control Bar (Thumb-accessible for view switching, settings & month navigation) */}
+      <Header
+        currentDate={currentDate}
+        viewType={viewType}
+        onViewChange={handleViewChange}
+        onPrev={handlePrev}
+        onNext={handleNext}
+        onToday={handleToday}
+        onOpenSearch={() => setIsSearchOpen(true)}
+        onOpenArrowSettings={() => setIsArrowSettingsOpen(true)}
+        onOpenYearMonthPicker={() => setIsYearMonthPickerOpen(true)}
+      />
 
       {/* Paste Notification Toast */}
       {pasteToast && (

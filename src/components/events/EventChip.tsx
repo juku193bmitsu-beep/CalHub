@@ -4,6 +4,7 @@ import { useLongPress } from '../../hooks/useLongPress';
 import { useClipboard } from '../../contexts/ClipboardContext';
 import { useEvents } from '../../contexts/EventContext';
 import { useCalendar } from '../../contexts/CalendarContext';
+import { isClickSuppressed, triggerHaptic } from '../../services/gestureUtils';
 import { Copy, Edit2, Trash2 } from 'lucide-react';
 
 interface EventChipProps {
@@ -57,11 +58,16 @@ export const EventChip: React.FC<EventChipProps> = ({
   const handleClick = (e?: React.MouseEvent) => {
     if (e) {
       e.stopPropagation();
+      e.preventDefault();
+    }
+    if (isClickSuppressed()) {
+      return;
     }
     if (showMenu) {
       setShowMenu(false);
       return;
     }
+    triggerHaptic('light');
     onOpenDetail(event);
   };
 
@@ -76,6 +82,7 @@ export const EventChip: React.FC<EventChipProps> = ({
     onLongPress: handleLongPress,
     onClick: handleClick,
     delay: 450,
+    threshold: 12,
   });
 
   const handleDragStart = (e: React.DragEvent) => {

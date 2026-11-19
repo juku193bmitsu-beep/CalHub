@@ -50,7 +50,7 @@ export class CalendarApiService {
     }));
   }
 
-  // 2. Fetch events in date range
+  // 2. Fetch events in date range (supports multi-year range & automatic pagination)
   public static async listEvents(
     token: string,
     calendarId: string,
@@ -59,25 +59,36 @@ export class CalendarApiService {
     query?: string,
     calendarColor?: string
   ): Promise<CalendarEvent[]> {
-    const params = new URLSearchParams({
-      singleEvents: 'true',
-      orderBy: 'startTime',
-      maxResults: '250',
-    });
-
-    if (timeMin) params.set('timeMin', timeMin);
-    if (timeMax) params.set('timeMax', timeMax);
-    if (query) params.set('q', query);
-
     const encodedCalId = encodeURIComponent(calendarId);
-    const data = await this.request<any>(
-      `/calendars/${encodedCalId}/events?${params.toString()}`,
-      token
-    );
+    let allItems: any[] = [];
+    let pageToken: string | undefined = undefined;
+    let pageCount = 0;
+    const MAX_PAGES = 10; // Supports up to 25,000 events per calendar
 
-    const items = data.items || [];
+    do {
+      const params = new URLSearchParams({
+        singleEvents: 'true',
+        orderBy: 'startTime',
+        maxResults: '2500',
+      });
 
-    return items.map((item: any) => {
+      if (timeMin) params.set('timeMin', timeMin);
+      if (timeMax) params.set('timeMax', timeMax);
+      if (query) params.set('q', query);
+      if (pageToken) params.set('pageToken', pageToken);
+
+      const data = await this.request<any>(
+        `/calendars/${encodedCalId}/events?${params.toString()}`,
+        token
+      );
+
+      const items = data.items || [];
+      allItems = allItems.concat(items);
+      pageToken = data.nextPageToken;
+      pageCount++;
+    } while (pageToken && pageCount < MAX_PAGES);
+
+    return allItems.map((item: any) => {
       const colorId = item.colorId;
       const palette = colorId ? GOOGLE_EVENT_COLORS[colorId] : undefined;
       const bg = palette?.background || calendarColor || undefined;

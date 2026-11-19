@@ -66,7 +66,7 @@ export const Header: React.FC<HeaderProps> = ({
   }, [isViewMenuOpen]);
 
   return (
-    <header className="bg-white/95 dark:bg-slate-900/95 backdrop-blur-md border-b border-slate-200/80 dark:border-slate-800 pt-safe px-2.5 sm:px-4 py-1.5 z-30 shrink-0 transition-colors">
+    <footer className="bg-white/95 dark:bg-slate-900/95 backdrop-blur-md border-t border-slate-200/80 dark:border-slate-800 pb-safe pt-2 px-2.5 sm:px-4 z-30 shrink-0 transition-colors shadow-lg">
       <div className="flex items-center justify-between gap-1 sm:gap-3 max-w-7xl mx-auto">
         {/* Left: Month Year Display & Date Navigation (＜ 2026年11月 ＞) */}
         <div className="flex items-center gap-1 sm:gap-2 shrink-0 min-w-0">
@@ -96,7 +96,7 @@ export const Header: React.FC<HeaderProps> = ({
               className="px-1.5 sm:px-2 py-0.5 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 transition active:scale-95 cursor-pointer text-center"
               title="タップして年月をドラムロールで選択"
             >
-              <h1 className="text-sm sm:text-lg font-bold tracking-tight text-slate-900 dark:white tabular-nums whitespace-nowrap">
+              <h1 className="text-sm sm:text-lg font-bold tracking-tight text-slate-900 dark:text-white tabular-nums whitespace-nowrap">
                 {year}年{month}月
               </h1>
             </button>
@@ -125,9 +125,9 @@ export const Header: React.FC<HeaderProps> = ({
             <ChevronDown className="w-3.5 h-3.5 text-slate-400" />
           </button>
 
-          {/* Mobile Dropdown Menu */}
+          {/* Mobile Dropdown Menu (Opens Upwards for Bottom Bar) */}
           {isViewMenuOpen && (
-            <div className="sm:hidden absolute top-full mt-1.5 left-1/2 -translate-x-1/2 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl shadow-xl py-1 w-32 z-50 animate-in fade-in zoom-in-95 duration-150">
+            <div className="sm:hidden absolute bottom-full mb-2 left-1/2 -translate-x-1/2 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl shadow-2xl py-1.5 w-36 z-50 animate-in fade-in slide-in-from-bottom-2 duration-150">
               {viewOptions.map((opt) => (
                 <button
                   key={opt.type}
@@ -187,6 +187,6 @@ export const Header: React.FC<HeaderProps> = ({
           </button>
         </div>
       </div>
-    </header>
+    </footer>
   );
 };

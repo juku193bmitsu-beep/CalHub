@@ -6,6 +6,7 @@ import { VerticalDayRow } from './VerticalDayRow';
 import { MultiDayArrowCanvas } from './MultiDayArrowCanvas';
 import { usePinchZoom } from '../../hooks/usePinchZoom';
 import { useSwipeNavigation } from '../../hooks/useSwipeNavigation';
+import { suppressNextClicks } from '../../services/gestureUtils';
 import { ZoomIn, ZoomOut, RotateCcw } from 'lucide-react';
 import {
   formatLocalDate,
@@ -64,12 +65,17 @@ export const VerticalView: React.FC<VerticalViewProps> = ({
     initialZoom: 1.0,
   });
 
-  // Swipe for month change (with strict direction locking & safeguards)
-  const { onTouchStart, onTouchMove, onTouchEnd } = useSwipeNavigation({
+  // Swipe for month change (with direction locking, speed/distance hybrid & safeguards)
+  const { onTouchStart, onTouchMove, onTouchEnd, onTouchCancel } = useSwipeNavigation({
     onSwipeLeft: onNextMonth,
     onSwipeRight: onPrevMonth,
-    disabled: zoom > 1.2, // Lock horizontal swipe when zoomed in to avoid accidental flips
+    disabled: zoom > 1.25, // Lock horizontal swipe when zoomed in to avoid accidental flips
   });
+
+  // Handle scroll to suppress accidental clicks during or immediately after vertical scrolling
+  const handleScroll = () => {
+    suppressNextClicks(220);
+  };
 
   // Calculate base row height so all days fit without scroll at zoom 1.0
   const baseRowHeight = Math.max(22, Math.floor(containerHeight / daysInMonth));
@@ -94,6 +100,8 @@ export const VerticalView: React.FC<VerticalViewProps> = ({
       onTouchStart={onTouchStart}
       onTouchMove={onTouchMove}
       onTouchEnd={onTouchEnd}
+      onTouchCancel={onTouchCancel}
+      onScroll={handleScroll}
       className="relative flex-1 w-full h-full overflow-y-auto overflow-x-hidden select-none bg-white dark:bg-slate-900"
     >
       <div className="relative min-w-full">

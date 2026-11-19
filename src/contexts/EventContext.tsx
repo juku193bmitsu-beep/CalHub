@@ -60,10 +60,11 @@ export const EventProvider: React.FC<{ children: React.ReactNode }> = ({ childre
 
     try {
       setIsSyncingEvents(true);
-      // Fetch 3 months range around current time
+      // Fetch multi-year range (Past 3 years to Future 3 years = 7 years total)
       const now = new Date();
-      const timeMin = new Date(now.getFullYear(), now.getMonth() - 2, 1).toISOString();
-      const timeMax = new Date(now.getFullYear(), now.getMonth() + 4, 0).toISOString();
+      const currentYear = now.getFullYear();
+      const timeMin = new Date(currentYear - 3, 0, 1).toISOString();
+      const timeMax = new Date(currentYear + 3, 11, 31, 23, 59, 59).toISOString();
 
       const promises = Array.from(visibleCalendarIds).map((calId) => {
         const cal = calendars.find((c) => c.id === calId);

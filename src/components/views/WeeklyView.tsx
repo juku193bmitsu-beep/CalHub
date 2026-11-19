@@ -4,6 +4,7 @@ import { CalendarEvent } from '../../types/calendar';
 import { getJapaneseHoliday } from '../../constants/holidays';
 import { useSwipeNavigation } from '../../hooks/useSwipeNavigation';
 import { formatLocalDate, isEventOnDate } from '../../services/dateUtils';
+import { isClickSuppressed, triggerHaptic } from '../../services/gestureUtils';
 import { EventChip } from '../events/EventChip';
 import { Plus } from 'lucide-react';
 
@@ -24,10 +25,28 @@ export const WeeklyView: React.FC<WeeklyViewProps> = ({
 }) => {
   const { filteredEvents } = useEvents();
 
-  const { onTouchStart, onTouchMove, onTouchEnd } = useSwipeNavigation({
+  const { onTouchStart, onTouchMove, onTouchEnd, onTouchCancel } = useSwipeNavigation({
     onSwipeLeft: onNextWeek,
     onSwipeRight: onPrevWeek,
   });
+
+  const handleDaySelect = (idx: number) => {
+    if (isClickSuppressed()) return;
+    triggerHaptic('light');
+    setActiveDayIdx(idx);
+  };
+
+  const handleSafeDateClick = (date: Date) => {
+    if (isClickSuppressed()) return;
+    triggerHaptic('light');
+    onDateClick(date);
+  };
+
+  const handleSafeEventClick = (event: CalendarEvent) => {
+    if (isClickSuppressed()) return;
+    triggerHaptic('light');
+    onEventClick(event);
+  };
 
   // Calculate start of current week (Sunday)
   const currentDayOfWeek = currentDate.getDay();
@@ -61,6 +80,7 @@ export const WeeklyView: React.FC<WeeklyViewProps> = ({
       onTouchStart={onTouchStart}
       onTouchMove={onTouchMove}
       onTouchEnd={onTouchEnd}
+      onTouchCancel={onTouchCancel}
       className="flex-1 flex flex-col h-full w-full select-none bg-slate-50 dark:bg-slate-900 overflow-hidden"
     >
       {/* 7 Days Top Header Bar */}
@@ -78,10 +98,7 @@ export const WeeklyView: React.FC<WeeklyViewProps> = ({
           return (
             <button
               key={idx}
-              onClick={() => {
-                setActiveDayIdx(idx);
-                // Note: Do NOT open modal here. Only switch day view.
-              }}
+              onClick={() => handleDaySelect(idx)}
               className={`flex flex-col items-center py-2 px-1 rounded-xl transition-all ${
                 isSelected
                   ? 'bg-blue-600 text-white shadow-md scale-102 font-semibold'
@@ -124,7 +141,7 @@ export const WeeklyView: React.FC<WeeklyViewProps> = ({
           </div>
 
           <button
-            onClick={() => onDateClick(selectedDay)}
+            onClick={() => handleSafeDateClick(selectedDay)}
             className="px-2.5 py-1 text-xs font-semibold rounded-xl bg-blue-600 hover:bg-blue-700 text-white flex items-center gap-1 transition active:scale-95 shadow-xs"
           >
             <Plus className="w-3.5 h-3.5" />
@@ -134,7 +151,7 @@ export const WeeklyView: React.FC<WeeklyViewProps> = ({
 
         {selectedEvents.length === 0 ? (
           <div
-            onClick={() => onDateClick(selectedDay)}
+            onClick={() => handleSafeDateClick(selectedDay)}
             className="text-center py-12 text-slate-400 dark:text-slate-500 text-xs cursor-pointer hover:bg-slate-100/50 dark:hover:bg-slate-800/40 rounded-2xl border border-dashed border-slate-300 dark:border-slate-700/60 transition"
           >
             予定はありません。タップしてこの日に予定を追加
@@ -145,7 +162,7 @@ export const WeeklyView: React.FC<WeeklyViewProps> = ({
               <div
                 key={event.id}
                 className="p-3 rounded-2xl bg-white dark:bg-slate-800/90 border border-slate-200/80 dark:border-slate-700/80 shadow-xs flex items-center justify-between gap-3 hover:border-blue-400 dark:hover:border-blue-500 transition cursor-pointer active:scale-99"
-                onClick={() => onEventClick(event)}
+                onClick={() => handleSafeEventClick(event)}
               >
                 <div className="flex items-center gap-2.5 min-w-0 flex-1">
                   <span

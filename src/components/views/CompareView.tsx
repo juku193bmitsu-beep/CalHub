@@ -5,6 +5,7 @@ import { CalendarEvent } from '../../types/calendar';
 import { EventChip } from '../events/EventChip';
 import { formatLocalDate, isEventOnDate } from '../../services/dateUtils';
 import { useSwipeNavigation } from '../../hooks/useSwipeNavigation';
+import { isClickSuppressed, suppressNextClicks, triggerHaptic } from '../../services/gestureUtils';
 
 interface CompareViewProps {
   currentDate: Date;
@@ -25,10 +26,20 @@ export const CompareView: React.FC<CompareViewProps> = ({
   const { filteredEvents, moveEventCalendar, moveEventDate } = useEvents();
   const [draggedEventId, setDraggedEventId] = useState<string | null>(null);
 
-  const { onTouchStart, onTouchMove, onTouchEnd } = useSwipeNavigation({
+  const { onTouchStart, onTouchMove, onTouchEnd, onTouchCancel } = useSwipeNavigation({
     onSwipeLeft: onNextMonth,
     onSwipeRight: onPrevMonth,
   });
+
+  const handleScroll = () => {
+    suppressNextClicks(200);
+  };
+
+  const handleCellClick = (date: Date) => {
+    if (isClickSuppressed()) return;
+    triggerHaptic('light');
+    onDateClick(date);
+  };
 
   // Active calendars to compare
   const activeCalendars = calendars.filter((c) => visibleCalendarIds.has(c.id));
@@ -63,6 +74,7 @@ export const CompareView: React.FC<CompareViewProps> = ({
       onTouchStart={onTouchStart}
       onTouchMove={onTouchMove}
       onTouchEnd={onTouchEnd}
+      onTouchCancel={onTouchCancel}
       className="flex-1 flex flex-col h-full w-full select-none bg-white dark:bg-slate-900 overflow-hidden"
     >
       {/* Column Headers for each active calendar */}
@@ -89,7 +101,7 @@ export const CompareView: React.FC<CompareViewProps> = ({
       </div>
 
       {/* Grid of days x calendars */}
-      <div className="flex-1 overflow-y-auto">
+      <div className="flex-1 overflow-y-auto" onScroll={handleScroll}>
         {days.map((d) => {
           const dateObj = new Date(year, month - 1, d);
           const dayOfWeek = dateObj.getDay();
@@ -100,7 +112,7 @@ export const CompareView: React.FC<CompareViewProps> = ({
           return (
             <div
               key={d}
-              onClick={() => onDateClick(dateObj)}
+              onClick={() => handleCellClick(dateObj)}
               className="flex border-b border-slate-200/50 dark:border-slate-800/50 min-h-[46px] hover:bg-slate-50/50 dark:hover:bg-slate-800/30 transition-colors cursor-pointer"
             >
               {/* Date Column */}

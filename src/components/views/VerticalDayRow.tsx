@@ -1,9 +1,10 @@
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import { CalendarEvent } from '../../types/calendar';
 import { EventChip } from '../events/EventChip';
 import { getJapaneseHoliday } from '../../constants/holidays';
 import { formatLocalDate } from '../../services/dateUtils';
 import { useEvents } from '../../contexts/EventContext';
+import { isClickSuppressed, suppressNextClicks, triggerHaptic } from '../../services/gestureUtils';
 
 interface VerticalDayRowProps {
   date: Date;
@@ -86,9 +87,55 @@ export const VerticalDayRow: React.FC<VerticalDayRowProps> = ({
     }
   };
 
+  const touchStartPos = useRef<{ x: number; y: number } | null>(null);
+  const touchStartTime = useRef<number>(0);
+  const touchMoved = useRef<boolean>(false);
+
+  const handleTouchStart = (e: React.TouchEvent) => {
+    touchStartPos.current = { x: e.touches[0].clientX, y: e.touches[0].clientY };
+    touchStartTime.current = Date.now();
+    touchMoved.current = false;
+  };
+
+  const handleTouchMove = (e: React.TouchEvent) => {
+    if (!touchStartPos.current) return;
+    const dx = Math.abs(e.touches[0].clientX - touchStartPos.current.x);
+    const dy = Math.abs(e.touches[0].clientY - touchStartPos.current.y);
+    if (dx > 8 || dy > 8) {
+      touchMoved.current = true;
+    }
+  };
+
+  const handleTouchEnd = () => {
+    if (touchMoved.current) {
+      suppressNextClicks(300);
+    }
+  };
+
+  const handleRowClick = (e: React.MouseEvent) => {
+    // Prevent accidental date click if gesture suppression is active or finger moved during touch
+    if (isClickSuppressed() || touchMoved.current) {
+      e.stopPropagation();
+      e.preventDefault();
+      return;
+    }
+
+    const duration = Date.now() - touchStartTime.current;
+    if (touchStartPos.current && duration > 450) {
+      // Released after a long hold -> suppress
+      return;
+    }
+
+    triggerHaptic('light');
+    onDateClick(date);
+  };
+
   return (
     <div
-      onClick={() => onDateClick(date)}
+      onClick={handleRowClick}
+      onTouchStart={handleTouchStart}
+      onTouchMove={handleTouchMove}
+      onTouchEnd={handleTouchEnd}
       onDragOver={handleDragOver}
       onDragLeave={handleDragLeave}
       onDrop={handleDrop}
