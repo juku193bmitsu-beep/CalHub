@@ -129,11 +129,11 @@ const MonthGrid: React.FC<MonthGridProps> = React.memo(({
   const maxVisibleLanes = useMemo(() => {
     if (gridHeight <= 0 || weeks.length === 0) return DEFAULT_MAX_VISIBLE_LANES;
     const weekHeight = gridHeight / weeks.length;
-    // Header height (mt-7 = 28px) and safety margin (4px)
-    const availableHeight = weekHeight - 28 - 4;
-    // Each event row takes 21px (19px height + 2px margin)
-    // Reserve ~16px for "+N more" badge so overflowing events don't get clipped
-    const lanesWithBadgeSpace = Math.floor((availableHeight - 16) / 21);
+    // Header height (date number row mt-8 = 32px) and safety margin (4px)
+    const availableHeight = weekHeight - 32 - 4;
+    // Each event row takes 23px (21px height + 2px margin)
+    // Reserve ~18px for "+N more" badge so overflowing events don't get clipped
+    const lanesWithBadgeSpace = Math.floor((availableHeight - 18) / 23);
     // If there is enough room, show 3 or more (4, 5, 6...); default to at least 3
     return Math.max(DEFAULT_MAX_VISIBLE_LANES, lanesWithBadgeSpace);
   }, [gridHeight, weeks.length]);
@@ -200,16 +200,16 @@ const MonthGrid: React.FC<MonthGridProps> = React.memo(({
                     }`}
                   >
                     {/* Day Number & Holiday Header */}
-                    <div className="flex items-center justify-between select-none pointer-events-none mb-1">
+                    <div className="flex items-center justify-between select-none pointer-events-none mb-0.5">
                       <span
-                        className={`w-5 h-5 flex items-center justify-center text-xs tabular-nums ${
+                        className={`w-6 h-6 sm:w-7 sm:h-7 flex items-center justify-center text-sm sm:text-base font-bold tabular-nums ${
                           isCurrentToday
-                            ? 'bg-blue-600 text-white font-extrabold rounded-[4px] shadow-sm ring-1 ring-blue-400 dark:ring-blue-300'
+                            ? 'bg-blue-600 text-white font-black rounded-md shadow-sm ring-1 ring-blue-400 dark:ring-blue-300'
                             : holiday || dayOfWeek === 0
-                            ? 'rounded-full font-semibold text-rose-500'
+                            ? 'rounded-full text-rose-600 dark:text-rose-400 font-bold'
                             : dayOfWeek === 6
-                            ? 'rounded-full font-semibold text-blue-500'
-                            : 'rounded-full font-semibold text-slate-700 dark:text-slate-300'
+                            ? 'rounded-full text-blue-600 dark:text-blue-400 font-bold'
+                            : 'rounded-full text-slate-800 dark:text-slate-200'
                         }`}
                       >
                         {dayNum}
@@ -217,7 +217,7 @@ const MonthGrid: React.FC<MonthGridProps> = React.memo(({
 
                       {holiday && (
                         <span
-                          className="text-[9px] text-rose-500 font-medium truncate max-w-[56px] sm:max-w-[90px] leading-tight"
+                          className="text-[10px] sm:text-xs text-rose-600 dark:text-rose-400 font-bold truncate max-w-[64px] sm:max-w-[110px] leading-tight"
                           title={holiday}
                         >
                           {holiday}
@@ -232,7 +232,7 @@ const MonthGrid: React.FC<MonthGridProps> = React.memo(({
                           e.stopPropagation();
                           onCellClick(cellDate);
                         }}
-                        className="text-[9px] text-slate-500 dark:text-slate-400 font-medium hover:text-blue-600 dark:hover:text-blue-400 truncate cursor-pointer hover:underline self-start px-0.5"
+                        className="text-[10px] sm:text-xs text-blue-600 dark:text-blue-400 font-bold hover:underline truncate cursor-pointer self-start px-1 py-0.5 rounded bg-blue-50/80 dark:bg-blue-950/60"
                       >
                         + {hiddenCountOnDay} 件
                       </div>
@@ -243,7 +243,7 @@ const MonthGrid: React.FC<MonthGridProps> = React.memo(({
             </div>
 
             {/* Layer 2: Spanning Events Overlay (Banners and Chips - always on top of background grid) */}
-            <div className="relative mt-7 flex-1 pointer-events-none overflow-hidden z-20">
+            <div className="relative mt-8 sm:mt-9 flex-1 pointer-events-none overflow-hidden z-20">
               {weekLayout.segments.map((seg) => {
                 if (seg.lane >= maxVisibleLanes) return null;
 
@@ -259,7 +259,7 @@ const MonthGrid: React.FC<MonthGridProps> = React.memo(({
 
                 const leftPercent = (startCol / 7) * 100;
                 const widthPercent = (span / 7) * 100;
-                const topPx = lane * 21;
+                const topPx = lane * 23;
                 const rawColor = event.backgroundColor || '#039be5';
                 const eventCal = calendars.find((c) => c.id === event.calendarId);
                 const isSpanOrAllDay = isAllDayOrMultiDay || span > 1;
@@ -282,21 +282,21 @@ const MonthGrid: React.FC<MonthGridProps> = React.memo(({
                         left: `calc(${leftPercent}% + 2px)`,
                         width: `calc(${widthPercent}% - 4px)`,
                         top: `${topPx}px`,
-                        height: '19px',
+                        height: '21px',
                         backgroundColor: rawColor,
                         ...(customTextColor ? { color: customTextColor } : {}),
                       }}
-                      className={`absolute pointer-events-auto flex items-center px-1.5 text-[10px] font-medium text-white shadow-2xs truncate cursor-grab active:cursor-grabbing hover:brightness-105 transition-all select-none ${
+                      className={`absolute pointer-events-auto flex items-center px-1.5 text-[11px] sm:text-xs md:text-sm font-semibold text-white shadow-2xs truncate cursor-grab active:cursor-grabbing hover:brightness-105 transition-all select-none ${
                         isStartsThisWeek ? 'rounded-l-md' : 'rounded-l-none'
                       } ${isEndsThisWeek ? 'rounded-r-md' : 'rounded-r-none'}`}
                       title={event.summary}
                     >
                       {!isStartsThisWeek && (
-                        <span className="mr-0.5 text-[8px] opacity-75">◀</span>
+                        <span className="mr-0.5 text-[9px] opacity-75">◀</span>
                       )}
                       <span className="truncate">{event.summary || '(予定なし)'}</span>
                       {!isEndsThisWeek && (
-                        <span className="ml-auto pl-0.5 text-[8px] opacity-75">▶</span>
+                        <span className="ml-auto pl-0.5 text-[9px] opacity-75">▶</span>
                       )}
                     </div>
                   );
@@ -322,13 +322,13 @@ const MonthGrid: React.FC<MonthGridProps> = React.memo(({
                       left: `calc(${leftPercent}% + 2px)`,
                       width: `calc(${widthPercent}% - 4px)`,
                       top: `${topPx}px`,
-                      height: '19px',
+                      height: '21px',
                       backgroundColor: isUnderbar ? 'transparent' : bgColorLight,
                       borderColor: isUnderbar ? 'transparent' : borderColorLight,
                       borderBottom: isUnderbar ? `2.5px solid ${rawColor}` : undefined,
                       ...(customTextColor ? { color: customTextColor } : {}),
                     }}
-                    className={`absolute pointer-events-auto flex items-center px-1 text-[10px] font-medium text-slate-800 dark:text-slate-100 truncate cursor-grab active:cursor-grabbing hover:brightness-95 dark:hover:brightness-110 transition-all select-none ${
+                    className={`absolute pointer-events-auto flex items-center px-1.5 text-[11px] sm:text-xs md:text-sm font-semibold text-slate-900 dark:text-slate-100 truncate cursor-grab active:cursor-grabbing hover:brightness-95 dark:hover:brightness-110 transition-all select-none ${
                       isUnderbar ? 'rounded-none' : 'rounded-md border shadow-2xs'
                     }`}
                     title={event.summary}
@@ -543,17 +543,17 @@ export const MonthlyView: React.FC<MonthlyViewProps> = ({
       onTouchCancel={handleTouchCancel}
       className="flex-1 flex flex-col h-full w-full select-none bg-slate-50 dark:bg-slate-900 overflow-hidden relative"
     >
-      {/* Fixed Sticky Weekday Header Bar */}
-      <div className="grid grid-cols-7 border-b border-slate-200/80 dark:border-slate-800 bg-white/80 dark:bg-slate-900/80 backdrop-blur-xs text-center py-1.5 shrink-0 z-20">
+      {/* Fixed Sticky Weekday Header Bar (Solid opaque background to eliminate clouding/blurring on iPad) */}
+      <div className="grid grid-cols-7 border-b border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 text-center py-2 sm:py-2.5 shrink-0 z-20 shadow-xs">
         {weekdays.map((w, idx) => (
           <div
             key={w}
-            className={`text-xs font-semibold ${
+            className={`text-sm sm:text-base font-bold select-none ${
               idx === 0
-                ? 'text-rose-500'
+                ? 'text-rose-600 dark:text-rose-400'
                 : idx === 6
-                ? 'text-blue-500'
-                : 'text-slate-500 dark:text-slate-400'
+                ? 'text-blue-600 dark:text-blue-400'
+                : 'text-slate-800 dark:text-slate-200'
             }`}
           >
             {w}

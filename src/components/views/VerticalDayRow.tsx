@@ -1,4 +1,4 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useMemo } from 'react';
 import { CalendarEvent } from '../../types/calendar';
 import { EventChip } from '../events/EventChip';
 import { getJapaneseHoliday } from '../../constants/holidays';
@@ -17,6 +17,7 @@ interface VerticalDayRowProps {
   events: CalendarEvent[];
   rowHeight: number;
   isToday: boolean;
+  containerWidth?: number;
   hasArrowPassing?: boolean;
   isDraggable?: boolean;
   onDateClick: (date: Date) => void;
@@ -28,6 +29,7 @@ export const VerticalDayRow: React.FC<VerticalDayRowProps> = React.memo(({
   events,
   rowHeight,
   isToday,
+  containerWidth = 1024,
   hasArrowPassing = false,
   isDraggable = true,
   onDateClick,
@@ -78,6 +80,35 @@ export const VerticalDayRow: React.FC<VerticalDayRowProps> = React.memo(({
       return true;
     })
     .sort(compareEventsByDisplayOrder);
+
+  // Responsive chip capacity calculation: maximize visible events based on iPad/PC container width
+  const maxVisibleChips = useMemo(() => {
+    // Mobile view (< 640px): fixed 3 columns
+    if (!containerWidth || containerWidth < 640) {
+      return 3;
+    }
+
+    const dateColWidth = 58;
+    const arrowOffset = hasArrowPassing ? 24 : 4;
+    const paddingSafety = 32;
+    const availableWidth = Math.max(120, containerWidth - dateColWidth - arrowOffset - paddingSafety);
+
+    const chipWidthWithGap = containerWidth >= 1024 ? 154 : 134; // chip width (150/130) + 4px gap
+    const plusBtnWidth = 46;
+
+    // If all chips fit into available width, show them all without wasting space
+    const capacityWithoutPlus = Math.floor(availableWidth / chipWidthWithGap);
+    if (visibleChips.length <= capacityWithoutPlus) {
+      return visibleChips.length;
+    }
+
+    // If they overflow, reserve space for the +N badge
+    const capacityWithPlus = Math.max(1, Math.floor((availableWidth - plusBtnWidth) / chipWidthWithGap));
+    return capacityWithPlus;
+  }, [containerWidth, hasArrowPassing, visibleChips.length]);
+
+  const displayedChips = visibleChips.slice(0, maxVisibleChips);
+  const hiddenCount = visibleChips.length - displayedChips.length;
 
   const handleDragOver = (e: React.DragEvent) => {
     e.preventDefault();
@@ -227,15 +258,17 @@ export const VerticalDayRow: React.FC<VerticalDayRowProps> = React.memo(({
 
       {/* Events Lane: seated directly above the underline */}
       <div
-        className={`flex-1 grid ${
-          visibleChips.length > 3
-            ? 'grid-cols-[1fr_1fr_1fr_auto]'
-            : 'grid-cols-3'
-        } sm:flex sm:items-end gap-1 items-end overflow-hidden min-w-0 transition-all pb-[1px] ${
+        className={`flex-1 ${
+          containerWidth < 640
+            ? visibleChips.length > 3
+              ? 'grid grid-cols-[1fr_1fr_1fr_auto]'
+              : 'grid grid-cols-3'
+            : 'flex items-end'
+        } gap-1 items-end overflow-hidden min-w-0 transition-all pb-[1px] ${
           hasArrowPassing ? 'pl-6' : 'pl-1'
         }`}
       >
-        {visibleChips.slice(0, 3).map((event) => {
+        {displayedChips.map((event) => {
           const isMultiDayStart = isMultiDayEvent(event) && getEventStartDateStr(event) === thisDateStr;
 
           return (
@@ -246,12 +279,12 @@ export const VerticalDayRow: React.FC<VerticalDayRowProps> = React.memo(({
               isCompact={rowHeight < 32}
               isDraggable={isDraggable}
               isMultiDayStart={isMultiDayStart}
-              className="w-full min-w-0 sm:w-[130px] md:w-[150px] sm:flex-none"
+              className="w-full min-w-0 sm:w-[130px] md:w-[150px] shrink-0"
             />
           );
         })}
 
-        {visibleChips.length > 3 && (
+        {hiddenCount > 0 && (
           <button
             type="button"
             onClick={(e) => {
@@ -259,10 +292,10 @@ export const VerticalDayRow: React.FC<VerticalDayRowProps> = React.memo(({
               triggerHaptic('light');
               onDateClick(date);
             }}
-            className="flex items-center justify-center shrink-0 h-[18px] px-1.5 text-[10px] font-bold text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-950/80 border border-blue-200 dark:border-blue-800 rounded-md shadow-2xs hover:bg-blue-100 dark:hover:bg-blue-900 transition active:scale-95 cursor-pointer whitespace-nowrap"
-            title={`他 ${visibleChips.length - 3} 件の予定があります（タップで詳細表示）`}
+            className="flex items-center justify-center shrink-0 h-[19px] px-2 text-[10px] sm:text-[11px] font-bold text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-950/80 border border-blue-200 dark:border-blue-800 rounded-md shadow-2xs hover:bg-blue-100 dark:hover:bg-blue-900 transition active:scale-95 cursor-pointer whitespace-nowrap"
+            title={`他 ${hiddenCount} 件の予定があります（タップで詳細表示）`}
           >
-            +{visibleChips.length - 3}
+            +{hiddenCount}
           </button>
         )}
       </div>

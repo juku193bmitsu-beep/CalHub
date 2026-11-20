@@ -28,6 +28,7 @@ interface VerticalMonthPanelProps {
   effectiveRowHeight: number;
   filteredEvents: CalendarEvent[];
   arrowSettings: ArrowDesignSettings;
+  containerWidth: number;
   onDateClick: (date: Date) => void;
   onEventClick: (event: CalendarEvent) => void;
   onScroll?: () => void;
@@ -39,6 +40,7 @@ const VerticalMonthPanel: React.FC<VerticalMonthPanelProps> = React.memo(
     effectiveRowHeight,
     filteredEvents,
     arrowSettings,
+    containerWidth,
     onDateClick,
     onEventClick,
     onScroll,
@@ -115,6 +117,7 @@ const VerticalMonthPanel: React.FC<VerticalMonthPanelProps> = React.memo(
                 date={date}
                 events={dayData?.dayEvents || []}
                 rowHeight={effectiveRowHeight}
+                containerWidth={containerWidth}
                 isToday={isToday}
                 hasArrowPassing={dayData?.hasArrowPassing || false}
                 isDraggable={true}
@@ -151,12 +154,18 @@ export const VerticalView: React.FC<VerticalViewProps> = ({
   const trackRef = useRef<HTMLDivElement | null>(null);
   const animTimeoutRef = useRef<number | null>(null);
 
-  // Height measurement for fixed 31 days basis
+  // Measurement for container size (height for fixed 31 days basis, width for responsive event chips)
   const [containerHeight, setContainerHeight] = useState<number>(() => {
     if (typeof window !== 'undefined') {
       return Math.max(500, window.innerHeight - 120);
     }
     return 700;
+  });
+  const [containerWidth, setContainerWidth] = useState<number>(() => {
+    if (typeof window !== 'undefined') {
+      return window.innerWidth;
+    }
+    return 1024;
   });
 
   useEffect(() => {
@@ -166,9 +175,9 @@ export const VerticalView: React.FC<VerticalViewProps> = ({
     const updateSize = () => {
       if (containerRef.current) {
         const h = containerRef.current.clientHeight;
-        if (h > 0) {
-          setContainerHeight(h);
-        }
+        const w = containerRef.current.clientWidth;
+        if (h > 0) setContainerHeight(h);
+        if (w > 0) setContainerWidth(w);
       }
     };
 
@@ -415,6 +424,7 @@ export const VerticalView: React.FC<VerticalViewProps> = ({
             effectiveRowHeight={effectiveRowHeight}
             filteredEvents={filteredEvents}
             arrowSettings={arrowSettings}
+            containerWidth={containerWidth}
             onDateClick={onDateClick}
             onEventClick={onEventClick}
             onScroll={handleScroll}
@@ -428,6 +438,7 @@ export const VerticalView: React.FC<VerticalViewProps> = ({
             effectiveRowHeight={effectiveRowHeight}
             filteredEvents={filteredEvents}
             arrowSettings={arrowSettings}
+            containerWidth={containerWidth}
             onDateClick={onDateClick}
             onEventClick={onEventClick}
             onScroll={handleScroll}
@@ -441,6 +452,7 @@ export const VerticalView: React.FC<VerticalViewProps> = ({
             effectiveRowHeight={effectiveRowHeight}
             filteredEvents={filteredEvents}
             arrowSettings={arrowSettings}
+            containerWidth={containerWidth}
             onDateClick={onDateClick}
             onEventClick={onEventClick}
             onScroll={handleScroll}
