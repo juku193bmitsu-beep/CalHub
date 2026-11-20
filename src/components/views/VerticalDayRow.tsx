@@ -172,13 +172,6 @@ export const VerticalDayRow: React.FC<VerticalDayRowProps> = ({
       ? 'text-[10px]'
       : 'text-[9px]';
 
-  const todayLabelSizeClass =
-    verticalFontSize === 'huge' || verticalFontSize === 'xlarge'
-      ? 'text-xs'
-      : verticalFontSize === 'large' || verticalFontSize === 'medium'
-      ? 'text-[11px]'
-      : 'text-[9.5px]';
-
   return (
     <div
       onClick={handleRowClick}
@@ -197,41 +190,39 @@ export const VerticalDayRow: React.FC<VerticalDayRowProps> = ({
           : ''
       }`}
     >
-      {/* Date Indicator (Left Column: seated directly on the baseline above the underline) */}
+      {/* Date Indicator (Left Column: seated directly on the baseline above the underline, no shift or overlap) */}
       <div className="flex items-baseline gap-1 w-[52px] sm:w-[58px] shrink-0 select-none pb-[1px]">
-        {isToday ? (
-          <span
-            className={`px-1.5 py-0.5 rounded-[4px] bg-blue-600 text-white font-black tabular-nums leading-none shadow-xs ${dateSizeClass}`}
-          >
-            {dayNum}
-          </span>
-        ) : (
-          <span
-            className={`tabular-nums font-bold leading-none ${dateSizeClass} ${dayColorClass}`}
-          >
-            {dayNum}
-          </span>
-        )}
+        <span
+          className={`tabular-nums leading-none ${dateSizeClass} ${
+            isToday
+              ? 'text-blue-600 dark:text-blue-400 font-black'
+              : `${
+                  verticalFontWeight === 'extrabold'
+                    ? 'font-black'
+                    : verticalFontWeight === 'bold'
+                    ? 'font-bold'
+                    : 'font-semibold'
+                } ${dayColorClass}`
+          }`}
+        >
+          {dayNum}
+        </span>
 
-        {isToday ? (
-          <span
-            className={`font-bold text-blue-600 dark:text-blue-400 leading-none ${todayLabelSizeClass}`}
-          >
-            今日
-          </span>
-        ) : (
-          <span
-            className={`leading-none ${weekdaySizeClass} ${
-              verticalFontWeight === 'extrabold'
-                ? 'font-black'
-                : verticalFontWeight === 'bold'
-                ? 'font-bold'
-                : 'font-medium'
-            } ${badgeClass}`}
-          >
-            {weekdayStr}
-          </span>
-        )}
+        <span
+          className={`leading-none ${weekdaySizeClass} ${
+            isToday
+              ? 'text-blue-600 dark:text-blue-400 font-bold'
+              : `${
+                  verticalFontWeight === 'extrabold'
+                    ? 'font-black'
+                    : verticalFontWeight === 'bold'
+                    ? 'font-bold'
+                    : 'font-medium'
+                } ${badgeClass}`
+          }`}
+        >
+          {weekdayStr}
+        </span>
       </div>
 
       {/* Events Lane: seated directly above the underline */}

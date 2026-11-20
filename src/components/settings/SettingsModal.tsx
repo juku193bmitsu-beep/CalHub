@@ -723,10 +723,10 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                 </div>
 
                 {/* Typography Live Preview */}
-                <div className="p-2.5 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700/80 flex items-center gap-2">
-                  <div className="flex items-center gap-1 shrink-0">
+                <div className="p-2.5 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700/80 flex items-end gap-2">
+                  <div className="flex items-baseline gap-1 shrink-0 pb-[1px]">
                     <span
-                      className={`w-6 h-6 flex items-center justify-center rounded-full bg-blue-600 text-white tabular-nums ${
+                      className={`tabular-nums leading-none font-black text-blue-600 dark:text-blue-400 ${
                         verticalFontSize === 'huge'
                           ? 'text-[16px]'
                           : verticalFontSize === 'xlarge'
@@ -740,18 +740,12 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                           : verticalFontSize === 'small'
                           ? 'text-[11px]'
                           : 'text-[10px]'
-                      } ${
-                        verticalFontWeight === 'extrabold'
-                          ? 'font-black'
-                          : verticalFontWeight === 'bold'
-                          ? 'font-bold'
-                          : 'font-semibold'
                       }`}
                     >
                       19
                     </span>
                     <span
-                      className={`${
+                      className={`leading-none ${
                         verticalFontSize === 'huge'
                           ? 'text-[14px]'
                           : verticalFontSize === 'xlarge'
