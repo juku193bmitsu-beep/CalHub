@@ -22,7 +22,7 @@ interface MonthlyViewProps {
   onNextMonth: () => void;
 }
 
-const MAX_VISIBLE_LANES = 3;
+const DEFAULT_MAX_VISIBLE_LANES = 3;
 
 interface MonthGridProps {
   date: Date;
@@ -104,6 +104,40 @@ const MonthGrid: React.FC<MonthGridProps> = React.memo(({
     return rows;
   }, [days]);
 
+  const gridRef = useRef<HTMLDivElement>(null);
+  const [gridHeight, setGridHeight] = useState<number>(0);
+
+  useEffect(() => {
+    if (!gridRef.current) return;
+    const el = gridRef.current;
+    if (el.clientHeight > 0) {
+      setGridHeight(el.clientHeight);
+    }
+
+    const observer = new ResizeObserver((entries) => {
+      for (const entry of entries) {
+        if (entry.contentRect.height > 0) {
+          setGridHeight(entry.contentRect.height);
+        }
+      }
+    });
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, []);
+
+  // Dynamically calculate visible lanes based on available vertical height in each cell
+  const maxVisibleLanes = useMemo(() => {
+    if (gridHeight <= 0 || weeks.length === 0) return DEFAULT_MAX_VISIBLE_LANES;
+    const weekHeight = gridHeight / weeks.length;
+    // Header height (mt-7 = 28px) and safety margin (4px)
+    const availableHeight = weekHeight - 28 - 4;
+    // Each event row takes 21px (19px height + 2px margin)
+    // Reserve ~16px for "+N more" badge so overflowing events don't get clipped
+    const lanesWithBadgeSpace = Math.floor((availableHeight - 16) / 21);
+    // If there is enough room, show 3 or more (4, 5, 6...); default to at least 3
+    return Math.max(DEFAULT_MAX_VISIBLE_LANES, lanesWithBadgeSpace);
+  }, [gridHeight, weeks.length]);
+
   const today = new Date();
   const isToday = (d: Date) =>
     d.getFullYear() === today.getFullYear() &&
@@ -111,7 +145,10 @@ const MonthGrid: React.FC<MonthGridProps> = React.memo(({
     d.getDate() === today.getDate();
 
   return (
-    <div className="h-full w-full flex flex-col divide-y divide-slate-200/70 dark:divide-slate-800/80 overflow-hidden bg-white dark:bg-slate-900 select-none">
+    <div
+      ref={gridRef}
+      className="h-full w-full flex flex-col divide-y divide-slate-200/70 dark:divide-slate-800/80 overflow-hidden bg-white dark:bg-slate-900 select-none"
+    >
       {weeks.map((week, weekIdx) => {
         const weekDates = week.map((w) => w.date);
         const weekLayout = computeWeekLayout(gridEvents, weekDates);
@@ -137,7 +174,7 @@ const MonthGrid: React.FC<MonthGridProps> = React.memo(({
                   (seg) =>
                     seg.startCol <= colIdx &&
                     seg.endCol >= colIdx &&
-                    seg.lane < MAX_VISIBLE_LANES
+                    seg.lane < maxVisibleLanes
                 ).length;
                 const hiddenCountOnDay = Math.max(0, dayEvents.length - visibleCountOnDay);
 
@@ -197,7 +234,7 @@ const MonthGrid: React.FC<MonthGridProps> = React.memo(({
                         }}
                         className="text-[9px] text-slate-500 dark:text-slate-400 font-medium hover:text-blue-600 dark:hover:text-blue-400 truncate cursor-pointer hover:underline self-start px-0.5"
                       >
-                        他 {hiddenCountOnDay} 件
+                        + {hiddenCountOnDay} 件
                       </div>
                     )}
                   </div>
@@ -208,7 +245,7 @@ const MonthGrid: React.FC<MonthGridProps> = React.memo(({
             {/* Layer 2: Spanning Events Overlay (Banners and Chips - always on top of background grid) */}
             <div className="relative mt-7 flex-1 pointer-events-none overflow-hidden z-20">
               {weekLayout.segments.map((seg) => {
-                if (seg.lane >= MAX_VISIBLE_LANES) return null;
+                if (seg.lane >= maxVisibleLanes) return null;
 
                 const {
                   event,
