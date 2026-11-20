@@ -94,6 +94,7 @@ export const EventDetailModal: React.FC<EventDetailModalProps> = ({
   const [endMinute, setEndMinute] = useState(0);
   const [formForegroundColor, setFormForegroundColor] = useState<string>('auto');
   const [formBackgroundColor, setFormBackgroundColor] = useState<string>('');
+  const [activeTimePicker, setActiveTimePicker] = useState<'start' | 'end' | null>(null);
 
   useEffect(() => {
     if (initialDate) setCurrentDate(initialDate);
@@ -227,6 +228,30 @@ export const EventDetailModal: React.FC<EventDetailModalProps> = ({
       setEndHour(newH);
       setEndMinute(newM);
     }
+  };
+
+  const getDurationText = () => {
+    const [sy, sm, sd] = formStartDate.split('-').map(Number);
+    const [ey, em, ed] = formEndDate.split('-').map(Number);
+    const s = new Date(sy, sm - 1, sd, startHour, startMinute).getTime();
+    const e = new Date(ey, em - 1, ed, endHour, endMinute).getTime();
+    const diffMin = Math.round((e - s) / (1000 * 60));
+    if (diffMin <= 0) return '0分';
+    const h = Math.floor(diffMin / 60);
+    const m = diffMin % 60;
+    if (h === 0) return `${m}分間`;
+    if (m === 0) return `${h}時間`;
+    return `${h}時間${m}分`;
+  };
+
+  const applyQuickDuration = (addMinutes: number) => {
+    const [sy, sm, sd] = formStartDate.split('-').map(Number);
+    const sDate = new Date(sy, sm - 1, sd, startHour, startMinute);
+    const newEndDate = new Date(sDate.getTime() + addMinutes * 60 * 1000);
+
+    setFormEndDate(formatLocalDate(newEndDate));
+    setEndHour(newEndDate.getHours());
+    setEndMinute(newEndDate.getMinutes());
   };
 
   if (!isOpen) return null;
@@ -487,75 +512,193 @@ export const EventDetailModal: React.FC<EventDetailModalProps> = ({
                 </select>
               </div>
 
-              {/* All-day switch */}
-              <div className="flex items-center justify-between py-0.5">
-                <span className="text-xs font-semibold text-slate-600 dark:text-slate-300">
-                  終日予定
-                </span>
-                <input
-                  type="checkbox"
-                  checked={formIsAllDay}
-                  onChange={(e) => setFormIsAllDay(e.target.checked)}
-                  className="w-5 h-5 rounded accent-blue-600 cursor-pointer"
-                />
-              </div>
+              {/* Unified Compact & Stylish DateTime Card */}
+              <div className="rounded-2xl border border-slate-200/90 dark:border-slate-700/90 bg-slate-50/80 dark:bg-slate-800/40 p-3 space-y-2.5">
+                {/* Header: Label, Duration & All-day Switch */}
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2 min-w-0">
+                    <span className="text-xs font-bold text-slate-700 dark:text-slate-200 flex items-center gap-1.5 shrink-0">
+                      <Clock className="w-3.5 h-3.5 text-blue-500" />
+                      日時設定
+                    </span>
+                    {!formIsAllDay && (
+                      <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-blue-100 dark:bg-blue-950/80 text-blue-700 dark:text-blue-300 border border-blue-200/80 dark:border-blue-800/80 truncate">
+                        {getDurationText()}
+                      </span>
+                    )}
+                  </div>
 
-              {/* Start Date & Time Section */}
-              <div className="p-3 rounded-2xl bg-slate-50 dark:bg-slate-800/50 border border-slate-200/80 dark:border-slate-700/80 space-y-2.5">
-                <div className="flex items-center justify-between gap-2">
-                  <span className="text-xs font-bold text-slate-700 dark:text-slate-200 flex items-center gap-1.5">
-                    <Calendar className="w-3.5 h-3.5 text-blue-500" />
-                    開始
-                  </span>
-                  <input
-                    type="date"
-                    required
-                    value={formStartDate}
-                    onChange={(e) => handleStartDateChange(e.target.value)}
-                    className="px-2.5 py-1 text-xs font-semibold rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  />
-                </div>
-                {!formIsAllDay && (
-                  <div className="pt-2 border-t border-slate-200/60 dark:border-slate-700/60">
-                    <div className="text-[11px] font-semibold text-slate-500 dark:text-slate-400 mb-1 flex items-center gap-1">
-                      <Clock className="w-3 h-3 text-blue-500" />
-                      <span>時刻</span>
-                    </div>
-                    <DrumTimePicker
-                      hour={startHour}
-                      minute={startMinute}
-                      onChange={handleStartTimeChange}
+                  {/* All-day switch */}
+                  <label className="flex items-center gap-1.5 cursor-pointer select-none shrink-0">
+                    <span className="text-xs font-semibold text-slate-600 dark:text-slate-400">終日</span>
+                    <input
+                      type="checkbox"
+                      checked={formIsAllDay}
+                      onChange={(e) => {
+                        setFormIsAllDay(e.target.checked);
+                        if (e.target.checked) setActiveTimePicker(null);
+                      }}
+                      className="w-4 h-4 rounded accent-blue-600 cursor-pointer"
                     />
+                  </label>
+                </div>
+
+                {/* Start & End Dual Rows */}
+                <div className="space-y-1.5">
+                  {/* Start Row */}
+                  <div
+                    className={`flex items-center justify-between p-2 rounded-xl transition-all ${
+                      activeTimePicker === 'start'
+                        ? 'bg-white dark:bg-slate-800 shadow-xs ring-1 ring-blue-500'
+                        : 'bg-white/80 dark:bg-slate-800/60 border border-slate-200/50 dark:border-slate-700/50'
+                    }`}
+                  >
+                    <span className="text-xs font-bold text-slate-600 dark:text-slate-300 w-12 shrink-0 flex items-center gap-1">
+                      <Calendar className="w-3.5 h-3.5 text-blue-500" />
+                      開始
+                    </span>
+                    <div className="flex items-center gap-1.5 flex-1 justify-end">
+                      <input
+                        type="date"
+                        required
+                        value={formStartDate}
+                        onChange={(e) => handleStartDateChange(e.target.value)}
+                        className="px-2 py-1 text-xs font-semibold rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 text-slate-800 dark:text-slate-200 focus:outline-none"
+                      />
+                      {!formIsAllDay && (
+                        <button
+                          type="button"
+                          onClick={() =>
+                            setActiveTimePicker(activeTimePicker === 'start' ? null : 'start')
+                          }
+                          className={`px-2.5 py-1 text-xs font-bold rounded-lg border transition active:scale-95 flex items-center gap-1 ${
+                            activeTimePicker === 'start'
+                              ? 'bg-blue-600 text-white border-blue-600 shadow-xs'
+                              : 'bg-slate-100 dark:bg-slate-700 text-blue-600 dark:text-blue-400 border-slate-200 dark:border-slate-600 hover:bg-slate-200'
+                          }`}
+                        >
+                          {`${startHour.toString().padStart(2, '0')}:${startMinute
+                            .toString()
+                            .padStart(2, '0')}`}
+                        </button>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* End Row */}
+                  <div
+                    className={`flex items-center justify-between p-2 rounded-xl transition-all ${
+                      activeTimePicker === 'end'
+                        ? 'bg-white dark:bg-slate-800 shadow-xs ring-1 ring-blue-500'
+                        : 'bg-white/80 dark:bg-slate-800/60 border border-slate-200/50 dark:border-slate-700/50'
+                    }`}
+                  >
+                    <span className="text-xs font-bold text-slate-600 dark:text-slate-300 w-12 shrink-0 flex items-center gap-1">
+                      <Calendar className="w-3.5 h-3.5 text-slate-400" />
+                      終了
+                    </span>
+                    <div className="flex items-center gap-1.5 flex-1 justify-end">
+                      <input
+                        type="date"
+                        required
+                        value={formEndDate}
+                        min={formStartDate}
+                        onChange={(e) => handleEndDateChange(e.target.value)}
+                        className="px-2 py-1 text-xs font-semibold rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 text-slate-800 dark:text-slate-200 focus:outline-none"
+                      />
+                      {!formIsAllDay && (
+                        <button
+                          type="button"
+                          onClick={() =>
+                            setActiveTimePicker(activeTimePicker === 'end' ? null : 'end')
+                          }
+                          className={`px-2.5 py-1 text-xs font-bold rounded-lg border transition active:scale-95 flex items-center gap-1 ${
+                            activeTimePicker === 'end'
+                              ? 'bg-blue-600 text-white border-blue-600 shadow-xs'
+                              : 'bg-slate-100 dark:bg-slate-700 text-blue-600 dark:text-blue-400 border-slate-200 dark:border-slate-600 hover:bg-slate-200'
+                          }`}
+                        >
+                          {`${endHour.toString().padStart(2, '0')}:${endMinute
+                            .toString()
+                            .padStart(2, '0')}`}
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                </div>
+
+                {/* Quick Duration Shortcuts (Only when timed) */}
+                {!formIsAllDay && (
+                  <div className="flex items-center gap-1.5 pt-0.5 px-0.5">
+                    <span className="text-[10px] text-slate-400 font-medium shrink-0">
+                      ワンタップ時間設定:
+                    </span>
+                    <div className="flex flex-wrap items-center gap-1 flex-1">
+                      {[15, 30, 60, 120].map((mins) => (
+                        <button
+                          key={mins}
+                          type="button"
+                          onClick={() => applyQuickDuration(mins)}
+                          className="px-2 py-0.5 rounded-lg text-[10px] font-semibold bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:bg-blue-50 dark:hover:bg-blue-950/40 hover:text-blue-600 transition active:scale-95 shadow-2xs"
+                        >
+                          {mins >= 60 ? `+${mins / 60}時間` : `+${mins}分`}
+                        </button>
+                      ))}
+                    </div>
                   </div>
                 )}
-              </div>
 
-              {/* End Date & Time Section */}
-              <div className="p-3 rounded-2xl bg-slate-50 dark:bg-slate-800/50 border border-slate-200/80 dark:border-slate-700/80 space-y-2.5">
-                <div className="flex items-center justify-between gap-2">
-                  <span className="text-xs font-bold text-slate-700 dark:text-slate-200 flex items-center gap-1.5">
-                    <Calendar className="w-3.5 h-3.5 text-slate-400" />
-                    終了
-                  </span>
-                  <input
-                    type="date"
-                    required
-                    value={formEndDate}
-                    min={formStartDate}
-                    onChange={(e) => handleEndDateChange(e.target.value)}
-                    className="px-2.5 py-1 text-xs font-semibold rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  />
-                </div>
-                {!formIsAllDay && (
-                  <div className="pt-2 border-t border-slate-200/60 dark:border-slate-700/60">
-                    <div className="text-[11px] font-semibold text-slate-500 dark:text-slate-400 mb-1 flex items-center gap-1">
-                      <Clock className="w-3 h-3 text-slate-400" />
-                      <span>時刻</span>
+                {/* Collapsible Smart Drum Picker */}
+                {!formIsAllDay && activeTimePicker && (
+                  <div className="pt-2 border-t border-slate-200/80 dark:border-slate-700/80 space-y-1.5 animate-in fade-in">
+                    <div className="flex items-center justify-between px-1">
+                      <div className="flex items-center gap-1.5">
+                        <span className="text-[11px] font-bold text-blue-600 dark:text-blue-400">
+                          {activeTimePicker === 'start' ? '開始時刻' : '終了時刻'}
+                        </span>
+                        <div className="flex items-center gap-1 bg-slate-200 dark:bg-slate-700 p-0.5 rounded-lg text-[10px] font-semibold">
+                          <button
+                            type="button"
+                            onClick={() => setActiveTimePicker('start')}
+                            className={`px-1.5 py-0.5 rounded ${
+                              activeTimePicker === 'start'
+                                ? 'bg-white dark:bg-slate-800 text-blue-600 shadow-2xs'
+                                : 'text-slate-500'
+                            }`}
+                          >
+                            開始
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => setActiveTimePicker('end')}
+                            className={`px-1.5 py-0.5 rounded ${
+                              activeTimePicker === 'end'
+                                ? 'bg-white dark:bg-slate-800 text-blue-600 shadow-2xs'
+                                : 'text-slate-500'
+                            }`}
+                          >
+                            終了
+                          </button>
+                        </div>
+                      </div>
+
+                      <button
+                        type="button"
+                        onClick={() => setActiveTimePicker(null)}
+                        className="text-[11px] text-blue-600 dark:text-blue-400 font-bold px-2 py-0.5 rounded hover:bg-blue-50 dark:hover:bg-blue-950/40 transition"
+                      >
+                        閉じる
+                      </button>
                     </div>
+
                     <DrumTimePicker
-                      hour={endHour}
-                      minute={endMinute}
-                      onChange={handleEndTimeChange}
+                      hour={activeTimePicker === 'start' ? startHour : endHour}
+                      minute={activeTimePicker === 'start' ? startMinute : endMinute}
+                      onChange={
+                        activeTimePicker === 'start'
+                          ? handleStartTimeChange
+                          : handleEndTimeChange
+                      }
                     />
                   </div>
                 )}

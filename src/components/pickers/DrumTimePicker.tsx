@@ -27,7 +27,7 @@ export const DrumTimePicker: React.FC<DrumTimePickerProps> = ({
     (_, i) => i * stepMinute
   );
 
-  const ITEM_HEIGHT = 36; // px per item
+  const ITEM_HEIGHT = 32; // px per item
 
   // Scroll to selected position whenever hour changes from outside and user is not interacting
   useEffect(() => {
@@ -98,9 +98,9 @@ export const DrumTimePicker: React.FC<DrumTimePickerProps> = ({
   };
 
   return (
-    <div className="relative flex items-center justify-center bg-slate-100 dark:bg-slate-800 rounded-2xl p-2 select-none h-40 overflow-hidden border border-slate-200 dark:border-slate-700">
+    <div className="relative flex items-center justify-center bg-slate-100 dark:bg-slate-800/80 rounded-xl p-1 select-none h-32 overflow-hidden border border-slate-200 dark:border-slate-700">
       {/* Center highlight bar */}
-      <div className="absolute inset-x-2 top-1/2 -translate-y-1/2 h-9 bg-blue-500/15 dark:bg-blue-400/20 rounded-xl pointer-events-none border border-blue-500/30" />
+      <div className="absolute inset-x-2 top-1/2 -translate-y-1/2 h-8 bg-blue-500/15 dark:bg-blue-400/20 rounded-lg pointer-events-none border border-blue-500/30" />
 
       {/* Hour column */}
       <div
@@ -109,7 +109,7 @@ export const DrumTimePicker: React.FC<DrumTimePickerProps> = ({
         onTouchStart={() => { isUserInteractingHourRef.current = true; }}
         onMouseDown={() => { isUserInteractingHourRef.current = true; }}
         onWheel={() => { isUserInteractingHourRef.current = true; }}
-        className="w-20 h-full overflow-y-auto snap-y snap-mandatory py-[62px] [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden"
+        className="w-16 sm:w-20 h-full overflow-y-auto snap-y snap-mandatory py-[48px] [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden"
       >
         {hours.map((h) => {
           const isSelected = h === hour;
@@ -118,9 +118,9 @@ export const DrumTimePicker: React.FC<DrumTimePickerProps> = ({
               key={h}
               style={{ height: `${ITEM_HEIGHT}px` }}
               onClick={() => handleSelectHour(h)}
-              className={`flex items-center justify-center snap-center text-sm tabular-nums font-semibold transition-all cursor-pointer ${
+              className={`flex items-center justify-center snap-center text-xs sm:text-sm tabular-nums font-semibold transition-all cursor-pointer ${
                 isSelected
-                  ? 'text-blue-600 dark:text-blue-400 text-lg scale-110 font-bold'
+                  ? 'text-blue-600 dark:text-blue-400 text-base scale-110 font-bold'
                   : 'text-slate-400 hover:text-slate-600 dark:hover:text-slate-300'
               }`}
             >
@@ -130,7 +130,7 @@ export const DrumTimePicker: React.FC<DrumTimePickerProps> = ({
         })}
       </div>
 
-      <span className="text-base font-bold text-slate-400 dark:text-slate-500 px-1">
+      <span className="text-sm font-bold text-slate-400 dark:text-slate-500 px-1">
         :
       </span>
 
@@ -141,7 +141,7 @@ export const DrumTimePicker: React.FC<DrumTimePickerProps> = ({
         onTouchStart={() => { isUserInteractingMinuteRef.current = true; }}
         onMouseDown={() => { isUserInteractingMinuteRef.current = true; }}
         onWheel={() => { isUserInteractingMinuteRef.current = true; }}
-        className="w-20 h-full overflow-y-auto snap-y snap-mandatory py-[62px] [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden"
+        className="w-16 sm:w-20 h-full overflow-y-auto snap-y snap-mandatory py-[48px] [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden"
       >
         {minutes.map((m) => {
           const isSelected = m === minute;
@@ -150,9 +150,9 @@ export const DrumTimePicker: React.FC<DrumTimePickerProps> = ({
               key={m}
               style={{ height: `${ITEM_HEIGHT}px` }}
               onClick={() => handleSelectMinute(m)}
-              className={`flex items-center justify-center snap-center text-sm tabular-nums font-semibold transition-all cursor-pointer ${
+              className={`flex items-center justify-center snap-center text-xs sm:text-sm tabular-nums font-semibold transition-all cursor-pointer ${
                 isSelected
-                  ? 'text-blue-600 dark:text-blue-400 text-lg scale-110 font-bold'
+                  ? 'text-blue-600 dark:text-blue-400 text-base scale-110 font-bold'
                   : 'text-slate-400 hover:text-slate-600 dark:hover:text-slate-300'
               }`}
             >
