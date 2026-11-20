@@ -6,6 +6,7 @@ import { getJapaneseHoliday } from '../../constants/holidays';
 import { useSwipeNavigation } from '../../hooks/useSwipeNavigation';
 import { formatLocalDate, isEventOnDate, getEventStartDateStr, getEventEndDateInclusiveStr } from '../../services/dateUtils';
 import { computeWeekLayout, computeOverlappingTimedLayout, hexToRgba } from '../../services/calendarLayout';
+import { resolveEventTextColor } from '../../services/colorUtils';
 import { isClickSuppressed, suppressNextClicks, triggerHaptic } from '../../services/gestureUtils';
 
 interface WeeklyTimeGridViewProps {
@@ -26,7 +27,7 @@ export const WeeklyTimeGridView: React.FC<WeeklyTimeGridViewProps> = ({
   onNextWeek,
 }) => {
   const { filteredEvents, moveEventDate, updateEvent } = useEvents();
-  const { timedEventStyle } = useCalendar();
+  const { timedEventStyle, calendars } = useCalendar();
   const scrollContainerRef = useRef<HTMLDivElement | null>(null);
 
   const { onTouchStart, onTouchMove, onTouchEnd, onTouchCancel } = useSwipeNavigation({
@@ -267,6 +268,9 @@ export const WeeklyTimeGridView: React.FC<WeeklyTimeGridViewProps> = ({
                   const leftPercent = (startCol / 7) * 100;
                   const widthPercent = (span / 7) * 100;
                   const topPx = lane * 23 + 2;
+                  const cal = calendars.find((c) => c.id === event.calendarId);
+                  const rawBg = event.backgroundColor || '#039be5';
+                  const customTextColor = resolveEventTextColor(event, cal, true, rawBg);
 
                   return (
                     <div
@@ -285,9 +289,10 @@ export const WeeklyTimeGridView: React.FC<WeeklyTimeGridViewProps> = ({
                         width: `calc(${widthPercent}% - 4px)`,
                         top: `${topPx}px`,
                         height: '21px',
-                        backgroundColor: event.backgroundColor || '#039be5',
+                        backgroundColor: rawBg,
+                        color: customTextColor || '#ffffff',
                       }}
-                      className={`absolute pointer-events-auto flex items-center px-1.5 text-[11px] font-medium text-white shadow-2xs truncate cursor-grab active:cursor-grabbing hover:brightness-105 transition-all select-none ${
+                      className={`absolute pointer-events-auto flex items-center px-1.5 text-[11px] font-medium shadow-2xs truncate cursor-grab active:cursor-grabbing hover:brightness-105 transition-all select-none ${
                         isStartsThisWeek ? 'rounded-l-md' : 'rounded-l-none'
                       } ${isEndsThisWeek ? 'rounded-r-md' : 'rounded-r-none'}`}
                       title={event.summary}
@@ -373,8 +378,10 @@ export const WeeklyTimeGridView: React.FC<WeeklyTimeGridViewProps> = ({
                 {/* Timed Event Blocks with Overlap Column Layout */}
                 {computeOverlappingTimedLayout(timedEvents, HOUR_HEIGHT).map((item) => {
                   const { event: ev, topPx, heightPx, leftPercent, widthPercent, timeStr } = item;
+                  const cal = calendars.find((c) => c.id === ev.calendarId);
                   const rawColor = ev.backgroundColor || '#039be5';
                   const isUnderbar = timedEventStyle === 'underbar';
+                  const customTextColor = resolveEventTextColor(ev, cal, false, rawColor);
                   const bgTint = hexToRgba(rawColor, isUnderbar ? 0.06 : 0.18);
                   const borderCol = hexToRgba(rawColor, 0.4);
 
@@ -399,6 +406,7 @@ export const WeeklyTimeGridView: React.FC<WeeklyTimeGridViewProps> = ({
                         borderColor: isUnderbar ? 'transparent' : borderCol,
                         borderBottom: isUnderbar ? `3px solid ${rawColor}` : undefined,
                         borderLeftColor: isUnderbar ? 'transparent' : rawColor,
+                        ...(customTextColor ? { color: customTextColor } : {}),
                       }}
                       className={`absolute rounded-lg p-1 z-10 overflow-hidden cursor-grab active:cursor-grabbing hover:brightness-105 transition-all select-none ${
                         isUnderbar
@@ -407,7 +415,12 @@ export const WeeklyTimeGridView: React.FC<WeeklyTimeGridViewProps> = ({
                       }`}
                       title={`${ev.summary} (${timeStr})`}
                     >
-                      <div className="text-[10px] sm:text-[11px] font-semibold text-slate-900 dark:text-white truncate leading-tight">
+                      <div
+                        style={customTextColor ? { color: customTextColor } : undefined}
+                        className={`text-[10px] sm:text-[11px] font-semibold truncate leading-tight ${
+                          !customTextColor ? 'text-slate-900 dark:text-white' : ''
+                        }`}
+                      >
                         {ev.summary}
                       </div>
                       {heightPx >= 30 && (

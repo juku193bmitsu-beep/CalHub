@@ -23,7 +23,12 @@ import {
   Moon,
   Trash2,
   RotateCcw,
+  Palette,
+  Type,
+  ChevronDown,
+  ChevronUp,
 } from 'lucide-react';
+import { TEXT_COLOR_PRESETS, BG_COLOR_PRESETS } from '../../services/colorUtils';
 
 interface SettingsModalProps {
   isOpen: boolean;
@@ -55,6 +60,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
     setAuthToken,
     theme,
     toggleTheme,
+    updateCalendarColor,
   } = useCalendar();
 
   const { clearAllEvents, resetToMockEvents, refreshEvents, eventStats, isSyncingEvents } = useEvents();
@@ -64,6 +70,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
   const [isSavedClientNotice, setIsSavedClientNotice] = useState(false);
   const [isLoggingIn, setIsLoggingIn] = useState(false);
   const [loginError, setLoginError] = useState<string | null>(null);
+  const [editingCalId, setEditingCalId] = useState<string | null>(null);
 
   // Sync tab & clientId when opened
   useEffect(() => {
@@ -274,36 +281,192 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
               <div className="space-y-2">
                 {calendars.map((cal) => {
                   const isChecked = visibleCalendarIds.has(cal.id);
+                  const isEditingThis = editingCalId === cal.id;
+
                   return (
                     <div
                       key={cal.id}
-                      onClick={() => toggleCalendarVisibility(cal.id)}
-                      className={`flex items-center justify-between p-3 rounded-2xl border transition-all cursor-pointer ${
+                      className={`rounded-2xl border transition-all overflow-hidden ${
                         isChecked
-                          ? 'border-blue-400/80 bg-blue-50/40 dark:bg-blue-950/20 shadow-xs'
-                          : 'border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/40 opacity-60'
+                          ? 'border-blue-400/80 bg-white dark:bg-slate-900 shadow-xs'
+                          : 'border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/40 opacity-70'
                       }`}
                     >
-                      <div className="flex items-center gap-3 min-w-0">
-                        <span
-                          className="w-3.5 h-3.5 rounded-full shrink-0 shadow-xs"
-                          style={{ backgroundColor: cal.backgroundColor }}
-                        />
-                        <span className="text-sm font-semibold text-slate-800 dark:text-slate-100 truncate">
-                          {cal.summary}
-                        </span>
+                      {/* Main Category Row */}
+                      <div className="flex items-center justify-between p-3 gap-2">
+                        <div
+                          onClick={() => toggleCalendarVisibility(cal.id)}
+                          className="flex items-center gap-3 min-w-0 flex-1 cursor-pointer"
+                        >
+                          <span
+                            className="w-3.5 h-3.5 rounded-full shrink-0 shadow-xs ring-1 ring-black/10"
+                            style={{ backgroundColor: cal.backgroundColor }}
+                          />
+                          <span
+                            className={`text-sm font-semibold truncate ${
+                              isChecked
+                                ? 'text-slate-800 dark:text-slate-100'
+                                : 'text-slate-400 line-through'
+                            }`}
+                          >
+                            {cal.summary}
+                          </span>
+                        </div>
+
+                        <div className="flex items-center gap-2 shrink-0">
+                          {/* Color Customization Toggle */}
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setEditingCalId(isEditingThis ? null : cal.id);
+                            }}
+                            className={`px-2 py-1 rounded-xl border text-xs font-semibold flex items-center gap-1 transition active:scale-95 ${
+                              isEditingThis
+                                ? 'bg-blue-600 text-white border-blue-600 shadow-xs'
+                                : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 border-slate-200 dark:border-slate-700 hover:bg-slate-200'
+                            }`}
+                            title="カレンダー色と文字色を変更"
+                          >
+                            <Palette className="w-3.5 h-3.5" />
+                            <span className="text-[11px] hidden sm:inline">色変更</span>
+                            {isEditingThis ? (
+                              <ChevronUp className="w-3 h-3 ml-0.5" />
+                            ) : (
+                              <ChevronDown className="w-3 h-3 ml-0.5" />
+                            )}
+                          </button>
+
+                          {/* Custom Checkbox Toggle */}
+                          <div
+                            onClick={() => toggleCalendarVisibility(cal.id)}
+                            className={`w-5 h-5 rounded-md flex items-center justify-center transition-colors cursor-pointer shrink-0 ${
+                              isChecked
+                                ? 'bg-blue-600 text-white shadow-xs'
+                                : 'border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800'
+                            }`}
+                          >
+                            {isChecked && <Check className="w-3.5 h-3.5 stroke-[3]" />}
+                          </div>
+                        </div>
                       </div>
 
-                      {/* Custom Checkbox Toggle */}
-                      <div
-                        className={`w-5 h-5 rounded-md flex items-center justify-center transition-colors shrink-0 ${
-                          isChecked
-                            ? 'bg-blue-600 text-white shadow-xs'
-                            : 'border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800'
-                        }`}
-                      >
-                        {isChecked && <Check className="w-3.5 h-3.5 stroke-[3]" />}
-                      </div>
+                      {/* Expandable Color Palette for this category */}
+                      {isEditingThis && (
+                        <div className="p-3 bg-slate-50 dark:bg-slate-800/80 border-t border-slate-200/80 dark:border-slate-700/80 space-y-3 animate-in fade-in">
+                          {/* 1. Category Default Text Color */}
+                          <div>
+                            <label className="text-[11px] font-bold text-slate-600 dark:text-slate-300 block mb-1.5 flex items-center gap-1">
+                              <Type className="w-3 h-3 text-slate-500" />
+                              このカテゴリーの文字色
+                            </label>
+                            <div className="flex flex-wrap items-center gap-1.5">
+                              {TEXT_COLOR_PRESETS.map((p) => {
+                                const isFgSel = (cal.foregroundColor || 'auto') === p.value;
+                                if (p.value === 'auto') {
+                                  return (
+                                    <button
+                                      key="auto"
+                                      type="button"
+                                      onClick={() =>
+                                        updateCalendarColor(cal.id, { foregroundColor: 'auto' })
+                                      }
+                                      className={`px-2 py-0.5 rounded-lg text-[10px] font-semibold border ${
+                                        isFgSel
+                                          ? 'bg-blue-600 text-white border-blue-600 ring-1 ring-blue-400'
+                                          : 'bg-white dark:bg-slate-700 text-slate-700 dark:text-slate-300 border-slate-300 dark:border-slate-600'
+                                      }`}
+                                    >
+                                      自動
+                                    </button>
+                                  );
+                                }
+                                return (
+                                  <button
+                                    key={p.value}
+                                    type="button"
+                                    onClick={() =>
+                                      updateCalendarColor(cal.id, { foregroundColor: p.value })
+                                    }
+                                    title={p.label}
+                                    className={`w-5 h-5 rounded-full border transition active:scale-95 ${
+                                      isFgSel
+                                        ? 'ring-2 ring-blue-500 scale-110'
+                                        : 'border-slate-300 dark:border-slate-600 hover:scale-105'
+                                    }`}
+                                    style={{ backgroundColor: p.bgHex }}
+                                  />
+                                );
+                              })}
+
+                              {/* Custom HTML Color Picker for Text */}
+                              <label
+                                title="カスタム文字色"
+                                className="relative w-5 h-5 rounded-full border border-dashed border-slate-400 dark:border-slate-500 flex items-center justify-center cursor-pointer text-[9px] font-bold text-slate-500 hover:text-blue-500"
+                              >
+                                +
+                                <input
+                                  type="color"
+                                  value={
+                                    cal.foregroundColor && cal.foregroundColor !== 'auto'
+                                      ? cal.foregroundColor
+                                      : '#000000'
+                                  }
+                                  onChange={(e) =>
+                                    updateCalendarColor(cal.id, { foregroundColor: e.target.value })
+                                  }
+                                  className="opacity-0 absolute inset-0 cursor-pointer w-full h-full"
+                                />
+                              </label>
+                            </div>
+                          </div>
+
+                          {/* 2. Category Background Color */}
+                          <div>
+                            <label className="text-[11px] font-bold text-slate-600 dark:text-slate-300 block mb-1.5 flex items-center gap-1">
+                              <Palette className="w-3 h-3 text-slate-500" />
+                              カテゴリーの背景色
+                            </label>
+                            <div className="flex flex-wrap items-center gap-1.5">
+                              {BG_COLOR_PRESETS.map((p) => {
+                                const isBgSel = cal.backgroundColor === p.value;
+                                return (
+                                  <button
+                                    key={p.value}
+                                    type="button"
+                                    onClick={() =>
+                                      updateCalendarColor(cal.id, { backgroundColor: p.value })
+                                    }
+                                    title={p.label}
+                                    className={`w-5 h-5 rounded-full border transition active:scale-95 ${
+                                      isBgSel
+                                        ? 'ring-2 ring-blue-500 scale-110'
+                                        : 'border-slate-300 dark:border-slate-600 hover:scale-105'
+                                    }`}
+                                    style={{ backgroundColor: p.bgHex }}
+                                  />
+                                );
+                              })}
+
+                              {/* Custom HTML Color Picker for Background */}
+                              <label
+                                title="カスタム背景色"
+                                className="relative w-5 h-5 rounded-full border border-dashed border-slate-400 dark:border-slate-500 flex items-center justify-center cursor-pointer text-[9px] font-bold text-slate-500 hover:text-blue-500"
+                              >
+                                +
+                                <input
+                                  type="color"
+                                  value={cal.backgroundColor || '#039be5'}
+                                  onChange={(e) =>
+                                    updateCalendarColor(cal.id, { backgroundColor: e.target.value })
+                                  }
+                                  className="opacity-0 absolute inset-0 cursor-pointer w-full h-full"
+                                />
+                              </label>
+                            </div>
+                          </div>
+                        </div>
+                      )}
                     </div>
                   );
                 })}

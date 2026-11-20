@@ -18,17 +18,7 @@ interface EventChipProps {
   className?: string;
 }
 
-// Convert hex color to rgba with specific opacity
-function hexToRgba(hex: string, alpha: number): string {
-  let c = hex.replace('#', '');
-  if (c.length === 3) c = c.split('').map((x) => x + x).join('');
-  const num = parseInt(c, 16);
-  if (isNaN(num)) return `rgba(59, 130, 246, ${alpha})`;
-  const r = (num >> 16) & 255;
-  const g = (num >> 8) & 255;
-  const b = num & 255;
-  return `rgba(${r}, ${g}, ${b}, ${alpha})`;
-}
+import { hexToRgba, resolveEventTextColor } from '../../services/colorUtils';
 
 export const EventChip: React.FC<EventChipProps> = ({
   event,
@@ -131,6 +121,8 @@ export const EventChip: React.FC<EventChipProps> = ({
 
   const calendar = calendars.find((c) => c.id === event.calendarId);
   const rawColor = event.backgroundColor || calendar?.backgroundColor || '#039be5';
+  const customTextColor = resolveEventTextColor(event, calendar, isAllDay, rawColor);
+
   // Enhanced contrast for timed events: higher opacity & vivid border for mobile outdoor visibility
   const bgColorLight = hexToRgba(rawColor, 0.22);
   const borderColorLight = hexToRgba(rawColor, 0.55);
@@ -181,7 +173,7 @@ export const EventChip: React.FC<EventChipProps> = ({
             ? {
                 backgroundColor: rawColor,
                 borderColor: 'transparent',
-                color: '#ffffff',
+                color: customTextColor || '#ffffff',
               }
             : timedEventStyle === 'underbar'
             ? {
@@ -191,29 +183,37 @@ export const EventChip: React.FC<EventChipProps> = ({
                 borderLeft: 'none',
                 borderRight: 'none',
                 borderRadius: '2px',
+                ...(customTextColor ? { color: customTextColor } : {}),
               }
             : {
                 backgroundColor: bgColorLight,
                 borderColor: borderColorLight,
+                ...(customTextColor ? { color: customTextColor } : {}),
               }
         }
         className={`w-full no-select cursor-grab active:cursor-grabbing transition-all select-none flex items-center gap-1 shadow-2xs border hover:shadow-xs overflow-hidden ${
           isAllDay
-            ? 'rounded-lg px-1.5 sm:px-2 py-0.5 text-white shadow-xs'
+            ? 'rounded-lg px-1.5 sm:px-2 py-0.5 shadow-xs'
             : timedEventStyle === 'underbar'
-            ? 'px-1 py-0.5 text-slate-800 dark:text-slate-100 shadow-none'
-            : 'rounded-lg px-1.5 sm:px-2 py-0.5 text-slate-800 dark:text-slate-100'
-        } ${isCompact ? 'h-[20px]' : 'h-[23px]'} ${
-          isDragging ? 'opacity-40 scale-95 border-dashed border-blue-400' : ''
-        }`}
+            ? 'px-1 py-0.5 shadow-none'
+            : 'rounded-lg px-1.5 sm:px-2 py-0.5'
+        } ${!customTextColor && !isAllDay ? 'text-slate-800 dark:text-slate-100' : ''} ${
+          isCompact ? 'h-[20px]' : 'h-[23px]'
+        } ${isDragging ? 'opacity-40 scale-95 border-dashed border-blue-400' : ''}`}
       >
         {timeText && (
-          <span className={`${timeSizeClass} opacity-80 font-normal tabular-nums shrink-0`}>
+          <span
+            style={customTextColor ? { color: customTextColor } : undefined}
+            className={`${timeSizeClass} opacity-80 font-normal tabular-nums shrink-0`}
+          >
             {timeText}
           </span>
         )}
 
-        <span className={`truncate leading-tight tracking-tight flex-1 ${titleSizeClass} ${titleWeightClass}`}>
+        <span
+          style={customTextColor ? { color: customTextColor } : undefined}
+          className={`truncate leading-tight tracking-tight flex-1 ${titleSizeClass} ${titleWeightClass}`}
+        >
           {event.summary || '(タイトルなし)'}
         </span>
       </div>

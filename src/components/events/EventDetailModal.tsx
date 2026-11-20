@@ -27,7 +27,15 @@ import {
   Copy,
   Check,
   Calendar,
+  Palette,
+  Type,
 } from 'lucide-react';
+import {
+  TEXT_COLOR_PRESETS,
+  BG_COLOR_PRESETS,
+  getAutoTextColor,
+  hexToRgba,
+} from '../../services/colorUtils';
 
 interface EventDetailModalProps {
   isOpen: boolean;
@@ -84,6 +92,8 @@ export const EventDetailModal: React.FC<EventDetailModalProps> = ({
   const [startMinute, setStartMinute] = useState(0);
   const [endHour, setEndHour] = useState(11);
   const [endMinute, setEndMinute] = useState(0);
+  const [formForegroundColor, setFormForegroundColor] = useState<string>('auto');
+  const [formBackgroundColor, setFormBackgroundColor] = useState<string>('');
 
   useEffect(() => {
     if (initialDate) setCurrentDate(initialDate);
@@ -118,6 +128,8 @@ export const EventDetailModal: React.FC<EventDetailModalProps> = ({
     setFormDescription(ev.description || '');
     setFormCalendarId(ev.calendarId);
     setFormIsAllDay(!!ev.isAllDay || !!ev.start.date);
+    setFormForegroundColor(ev.foregroundColor || 'auto');
+    setFormBackgroundColor(ev.backgroundColor || '');
 
     const sDateStr = getEventStartDateStr(ev) || formatLocalDate(currentDate);
     const eDateStr = getEventEndDateInclusiveStr(ev) || sDateStr;
@@ -158,6 +170,8 @@ export const EventDetailModal: React.FC<EventDetailModalProps> = ({
     setStartMinute(0);
     setEndHour(11);
     setEndMinute(0);
+    setFormForegroundColor('auto');
+    setFormBackgroundColor('');
   };
 
   const handleStartDateChange = (newDateStr: string) => {
@@ -269,6 +283,10 @@ export const EventDetailModal: React.FC<EventDetailModalProps> = ({
       endObj = { dateTime: eDate.toISOString() };
     }
 
+    const customFg =
+      formForegroundColor && formForegroundColor !== 'auto' ? formForegroundColor : undefined;
+    const finalBgCol = formBackgroundColor || bgCol;
+
     if (isCreatingNew) {
       addEvent({
         calendarId: formCalendarId,
@@ -278,7 +296,8 @@ export const EventDetailModal: React.FC<EventDetailModalProps> = ({
         isAllDay: formIsAllDay,
         start: startObj,
         end: endObj,
-        backgroundColor: bgCol,
+        backgroundColor: finalBgCol,
+        foregroundColor: customFg,
       });
     } else if (editingEvent) {
       updateEvent(editingEvent.id, {
@@ -289,7 +308,8 @@ export const EventDetailModal: React.FC<EventDetailModalProps> = ({
         isAllDay: formIsAllDay,
         start: startObj,
         end: endObj,
-        backgroundColor: bgCol,
+        backgroundColor: finalBgCol,
+        foregroundColor: customFg,
       });
     }
 
@@ -565,6 +585,170 @@ export const EventDetailModal: React.FC<EventDetailModalProps> = ({
                   onChange={(e) => setFormDescription(e.target.value)}
                   className="w-full px-3 py-2 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white text-sm focus:outline-none"
                 />
+              </div>
+
+              {/* Color Customization Section (Text Color & Background Color) */}
+              <div className="p-3.5 rounded-2xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200/80 dark:border-slate-700/80 space-y-3">
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-bold text-slate-700 dark:text-slate-200 flex items-center gap-1.5">
+                    <Palette className="w-3.5 h-3.5 text-blue-500" />
+                    色のカスタマイズ
+                  </span>
+
+                  {/* Real-time Chip Preview */}
+                  {(() => {
+                    const selCal = calendars.find((c) => c.id === formCalendarId);
+                    const effectiveBg = formBackgroundColor || selCal?.backgroundColor || '#039be5';
+                    const effectiveFg =
+                      formForegroundColor && formForegroundColor !== 'auto'
+                        ? formForegroundColor
+                        : formIsAllDay
+                        ? getAutoTextColor(effectiveBg)
+                        : selCal?.foregroundColor || '#0f172a';
+                    const previewTitle = formSummary.trim() || '予定のプレビュー';
+
+                    return (
+                      <div className="flex items-center gap-1.5">
+                        <span className="text-[10px] text-slate-400 font-medium">表示見本:</span>
+                        <div
+                          style={{
+                            backgroundColor: formIsAllDay ? effectiveBg : hexToRgba(effectiveBg, 0.2),
+                            borderColor: hexToRgba(effectiveBg, 0.5),
+                            color: effectiveFg,
+                          }}
+                          className={`max-w-[130px] px-2 py-0.5 rounded-lg text-xs font-semibold truncate border shadow-2xs`}
+                        >
+                          {previewTitle}
+                        </div>
+                      </div>
+                    );
+                  })()}
+                </div>
+
+                {/* 1. Text Color (文字の色) */}
+                <div>
+                  <label className="text-[11px] font-semibold text-slate-600 dark:text-slate-400 block mb-1.5 flex items-center gap-1">
+                    <Type className="w-3 h-3 text-slate-500" />
+                    文字の色（テキストカラー）
+                  </label>
+                  <div className="flex flex-wrap items-center gap-1.5">
+                    {TEXT_COLOR_PRESETS.map((preset) => {
+                      const isSelected = formForegroundColor === preset.value;
+                      if (preset.value === 'auto') {
+                        return (
+                          <button
+                            key="auto"
+                            type="button"
+                            onClick={() => setFormForegroundColor('auto')}
+                            className={`px-2 py-1 rounded-lg text-[10px] font-semibold border transition active:scale-95 ${
+                              isSelected
+                                ? 'bg-blue-600 text-white border-blue-600 shadow-xs ring-1 ring-blue-400'
+                                : 'bg-white dark:bg-slate-700 text-slate-700 dark:text-slate-300 border-slate-300 dark:border-slate-600 hover:bg-slate-100'
+                            }`}
+                          >
+                            自動
+                          </button>
+                        );
+                      }
+
+                      return (
+                        <button
+                          key={preset.value}
+                          type="button"
+                          onClick={() => setFormForegroundColor(preset.value)}
+                          title={preset.label}
+                          className={`w-6 h-6 rounded-full border flex items-center justify-center transition active:scale-95 shadow-2xs ${
+                            isSelected
+                              ? 'ring-2 ring-offset-2 ring-blue-500 scale-110 border-white'
+                              : 'border-slate-300 dark:border-slate-600 hover:scale-105'
+                          }`}
+                          style={{ backgroundColor: preset.bgHex }}
+                        >
+                          {isSelected && (
+                            <Check
+                              className={`w-3.5 h-3.5 stroke-[3] ${
+                                preset.value === '#ffffff' ? 'text-slate-900' : 'text-white'
+                              }`}
+                            />
+                          )}
+                        </button>
+                      );
+                    })}
+
+                    {/* Custom HTML Color Picker for Text */}
+                    <label
+                      title="カスタム文字色"
+                      className="relative w-6 h-6 rounded-full border border-dashed border-slate-400 dark:border-slate-500 flex items-center justify-center cursor-pointer hover:border-blue-500 transition overflow-hidden text-[9px] font-bold text-slate-500 hover:text-blue-500"
+                    >
+                      +
+                      <input
+                        type="color"
+                        value={
+                          formForegroundColor && formForegroundColor !== 'auto'
+                            ? formForegroundColor
+                            : '#000000'
+                        }
+                        onChange={(e) => setFormForegroundColor(e.target.value)}
+                        className="opacity-0 absolute inset-0 cursor-pointer w-full h-full"
+                      />
+                    </label>
+                  </div>
+                </div>
+
+                {/* 2. Background / Category Accent Color (予定の背景色) */}
+                <div>
+                  <label className="text-[11px] font-semibold text-slate-600 dark:text-slate-400 block mb-1.5 flex items-center gap-1">
+                    <Palette className="w-3 h-3 text-slate-500" />
+                    予定の色（アクセント・背景色）
+                  </label>
+                  <div className="flex flex-wrap items-center gap-1.5">
+                    <button
+                      type="button"
+                      onClick={() => setFormBackgroundColor('')}
+                      className={`px-2 py-1 rounded-lg text-[10px] font-semibold border transition active:scale-95 ${
+                        !formBackgroundColor
+                          ? 'bg-blue-600 text-white border-blue-600 shadow-xs ring-1 ring-blue-400'
+                          : 'bg-white dark:bg-slate-700 text-slate-700 dark:text-slate-300 border-slate-300 dark:border-slate-600 hover:bg-slate-100'
+                      }`}
+                    >
+                      カレンダー標準
+                    </button>
+
+                    {BG_COLOR_PRESETS.map((preset) => {
+                      const isSelected = formBackgroundColor === preset.value;
+                      return (
+                        <button
+                          key={preset.value}
+                          type="button"
+                          onClick={() => setFormBackgroundColor(preset.value)}
+                          title={preset.label}
+                          className={`w-6 h-6 rounded-full border flex items-center justify-center transition active:scale-95 shadow-2xs ${
+                            isSelected
+                              ? 'ring-2 ring-offset-2 ring-blue-500 scale-110 border-white'
+                              : 'border-slate-300 dark:border-slate-600 hover:scale-105'
+                          }`}
+                          style={{ backgroundColor: preset.bgHex }}
+                        >
+                          {isSelected && <Check className="w-3.5 h-3.5 stroke-[3] text-white" />}
+                        </button>
+                      );
+                    })}
+
+                    {/* Custom HTML Color Picker for Background */}
+                    <label
+                      title="カスタム背景色"
+                      className="relative w-6 h-6 rounded-full border border-dashed border-slate-400 dark:border-slate-500 flex items-center justify-center cursor-pointer hover:border-blue-500 transition overflow-hidden text-[9px] font-bold text-slate-500 hover:text-blue-500"
+                    >
+                      +
+                      <input
+                        type="color"
+                        value={formBackgroundColor || '#039be5'}
+                        onChange={(e) => setFormBackgroundColor(e.target.value)}
+                        className="opacity-0 absolute inset-0 cursor-pointer w-full h-full"
+                      />
+                    </label>
+                  </div>
+                </div>
               </div>
             </form>
           ) : (

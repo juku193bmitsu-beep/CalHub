@@ -37,6 +37,7 @@ interface CalendarContextType {
   setAuthToken: (token: string | null) => void;
   isSyncing: boolean;
   refreshCalendars: () => Promise<void>;
+  updateCalendarColor: (id: string, colors: { backgroundColor?: string; foregroundColor?: string }) => void;
 }
 
 const CalendarContext = createContext<CalendarContextType | null>(null);
@@ -278,6 +279,28 @@ export const CalendarProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     });
   };
 
+  const updateCalendarColor = useCallback(
+    (id: string, colors: { backgroundColor?: string; foregroundColor?: string }) => {
+      setCalendars((prev) => {
+        const next = prev.map((cal) => {
+          if (cal.id === id) {
+            return {
+              ...cal,
+              ...(colors.backgroundColor ? { backgroundColor: colors.backgroundColor } : {}),
+              ...(colors.foregroundColor ? { foregroundColor: colors.foregroundColor } : {}),
+            };
+          }
+          return cal;
+        });
+        try {
+          localStorage.setItem(STORAGE_KEY_CALENDARS, JSON.stringify(next));
+        } catch {}
+        return next;
+      });
+    },
+    []
+  );
+
   return (
     <CalendarContext.Provider
       value={{
@@ -301,6 +324,7 @@ export const CalendarProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         setAuthToken,
         isSyncing,
         refreshCalendars,
+        updateCalendarColor,
       }}
     >
       {children}

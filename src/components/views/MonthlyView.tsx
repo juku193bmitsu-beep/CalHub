@@ -6,6 +6,7 @@ import { getJapaneseHoliday } from '../../constants/holidays';
 import { isClickSuppressed, suppressNextClicks, triggerHaptic } from '../../services/gestureUtils';
 import { formatLocalDate, isEventOnDate } from '../../services/dateUtils';
 import { computeWeekLayout, hexToRgba } from '../../services/calendarLayout';
+import { resolveEventTextColor } from '../../services/colorUtils';
 
 interface MonthlyViewProps {
   currentDate: Date;
@@ -41,7 +42,7 @@ const MonthGrid: React.FC<MonthGridProps> = ({
   onDragLeave,
   onDrop,
 }) => {
-  const { timedEventStyle } = useCalendar();
+  const { timedEventStyle, calendars } = useCalendar();
   const year = date.getFullYear();
   const month = date.getMonth();
 
@@ -201,8 +202,11 @@ const MonthGrid: React.FC<MonthGridProps> = ({
                 const widthPercent = (span / 7) * 100;
                 const topPx = lane * 21;
                 const rawColor = event.backgroundColor || '#039be5';
+                const eventCal = calendars.find((c) => c.id === event.calendarId);
+                const isSpanOrAllDay = isAllDayOrMultiDay || span > 1;
+                const customTextColor = resolveEventTextColor(event, eventCal, isSpanOrAllDay, rawColor);
 
-                if (isAllDayOrMultiDay || span > 1) {
+                if (isSpanOrAllDay) {
                   return (
                     <div
                       key={`${event.id}-${startCol}`}
@@ -221,8 +225,9 @@ const MonthGrid: React.FC<MonthGridProps> = ({
                         top: `${topPx}px`,
                         height: '19px',
                         backgroundColor: rawColor,
+                        color: customTextColor || '#ffffff',
                       }}
-                      className={`absolute pointer-events-auto flex items-center px-1.5 text-[10px] font-medium text-white shadow-2xs truncate cursor-grab active:cursor-grabbing hover:brightness-105 transition-all select-none ${
+                      className={`absolute pointer-events-auto flex items-center px-1.5 text-[10px] font-medium shadow-2xs truncate cursor-grab active:cursor-grabbing hover:brightness-105 transition-all select-none ${
                         isStartsThisWeek ? 'rounded-l-md' : 'rounded-l-none'
                       } ${isEndsThisWeek ? 'rounded-r-md' : 'rounded-r-none'}`}
                       title={event.summary}
@@ -262,10 +267,11 @@ const MonthGrid: React.FC<MonthGridProps> = ({
                       backgroundColor: isUnderbar ? 'transparent' : bgColorLight,
                       borderColor: isUnderbar ? 'transparent' : borderColorLight,
                       borderBottom: isUnderbar ? `2.5px solid ${rawColor}` : undefined,
+                      ...(customTextColor ? { color: customTextColor } : {}),
                     }}
-                    className={`absolute pointer-events-auto flex items-center px-1 text-[10px] font-medium text-slate-800 dark:text-slate-100 truncate cursor-grab active:cursor-grabbing hover:brightness-95 dark:hover:brightness-110 transition-all select-none ${
-                      isUnderbar ? 'rounded-none' : 'rounded-md border shadow-2xs'
-                    }`}
+                    className={`absolute pointer-events-auto flex items-center px-1 text-[10px] font-medium truncate cursor-grab active:cursor-grabbing hover:brightness-95 dark:hover:brightness-110 transition-all select-none ${
+                      !customTextColor ? 'text-slate-800 dark:text-slate-100' : ''
+                    } ${isUnderbar ? 'rounded-none' : 'rounded-md border shadow-2xs'}`}
                     title={event.summary}
                   >
                     <span className="truncate">{event.summary || '(予定なし)'}</span>
