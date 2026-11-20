@@ -150,11 +150,11 @@ export const MultiDayArrowCanvas: React.FC<MultiDayArrowCanvasProps> = ({
 
         // Start directly from the bottom edge of the start-day event chip (or top of the month if continuing)
         const topY = isStartedInCurrentMonth
-          ? (startDay - 1) * rowHeight + Math.min(rowHeight - 2, Math.floor(rowHeight * 0.5 + 11))
+          ? startDay * rowHeight - 2
           : 0;
 
         // End precisely at the bottom of the final day row (border boundary)
-        const bottomY = endDay * rowHeight - 5;
+        const bottomY = endDay * rowHeight - 4;
         const xPos = laneBaseOffset + lane * laneWidth;
         const color = event.backgroundColor || '#3b82f6';
 

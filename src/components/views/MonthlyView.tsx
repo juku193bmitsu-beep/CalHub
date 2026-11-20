@@ -136,7 +136,7 @@ const MonthGrid: React.FC<MonthGridProps> = ({
                         : 'bg-white dark:bg-slate-900'
                     } ${
                       isCurrentToday
-                        ? 'bg-blue-50/80 dark:bg-blue-950/40 ring-2 ring-inset ring-blue-600 dark:ring-blue-500 rounded-sm z-10 shadow-xs'
+                        ? 'bg-blue-50/70 dark:bg-blue-950/40 ring-2 ring-inset ring-blue-600 dark:ring-blue-500 rounded-sm'
                         : ''
                     } ${
                       isOverThisDay
@@ -187,8 +187,8 @@ const MonthGrid: React.FC<MonthGridProps> = ({
               })}
             </div>
 
-            {/* Layer 2: Spanning Events Overlay (Banners and Chips) */}
-            <div className="relative mt-7 flex-1 pointer-events-none overflow-hidden">
+            {/* Layer 2: Spanning Events Overlay (Banners and Chips - always on top of background grid) */}
+            <div className="relative mt-7 flex-1 pointer-events-none overflow-hidden z-20">
               {weekLayout.segments.map((seg) => {
                 if (seg.lane >= MAX_VISIBLE_LANES) return null;
 

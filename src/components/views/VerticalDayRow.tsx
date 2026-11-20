@@ -189,7 +189,7 @@ export const VerticalDayRow: React.FC<VerticalDayRowProps> = ({
       onDragLeave={handleDragLeave}
       onDrop={handleDrop}
       style={{ height: `${rowHeight}px` }}
-      className={`group relative flex items-end pb-[2px] border-b border-slate-200/50 dark:border-slate-800/60 px-2 cursor-pointer transition-colors active:bg-blue-50/50 dark:active:bg-slate-800/50 hover:bg-slate-50/60 dark:hover:bg-slate-800/30 ${
+      className={`group relative flex items-end border-b border-slate-200/70 dark:border-slate-800/80 px-2 cursor-pointer transition-colors active:bg-blue-50/50 dark:active:bg-slate-800/50 hover:bg-slate-50/60 dark:hover:bg-slate-800/30 ${
         isDragOver
           ? 'bg-blue-100/80 dark:bg-blue-900/50 border-blue-400 scale-[1.002] z-10 shadow-xs'
           : isToday
@@ -197,26 +197,25 @@ export const VerticalDayRow: React.FC<VerticalDayRowProps> = ({
           : ''
       }`}
     >
-      {/* Date Indicator (Left Column: fixed 58px width, lowered close to underbar without touching) */}
-      <div className="flex items-center gap-1 w-[58px] shrink-0 select-none pb-[0.5px]">
-        <span
-          className={`w-6 h-6 flex items-center justify-center rounded-full tabular-nums leading-none ${dateSizeClass} ${
-            verticalFontWeight === 'extrabold'
-              ? 'font-black'
-              : verticalFontWeight === 'bold'
-              ? 'font-bold'
-              : 'font-semibold'
-          } ${
-            isToday
-              ? 'bg-blue-600 text-white shadow-md ring-2 ring-blue-300 dark:ring-blue-600'
-              : dayColorClass
-          }`}
-        >
-          {dayNum}
-        </span>
+      {/* Date Indicator (Left Column: seated directly on the baseline above the underline) */}
+      <div className="flex items-baseline gap-1 w-[52px] sm:w-[58px] shrink-0 select-none pb-[1px]">
         {isToday ? (
           <span
-            className={`font-bold text-blue-600 dark:text-blue-400 bg-blue-100/90 dark:bg-blue-900/60 px-1 py-0.2 rounded leading-none ${todayLabelSizeClass}`}
+            className={`px-1.5 py-0.5 rounded-[4px] bg-blue-600 text-white font-black tabular-nums leading-none shadow-xs ${dateSizeClass}`}
+          >
+            {dayNum}
+          </span>
+        ) : (
+          <span
+            className={`tabular-nums font-bold leading-none ${dateSizeClass} ${dayColorClass}`}
+          >
+            {dayNum}
+          </span>
+        )}
+
+        {isToday ? (
+          <span
+            className={`font-bold text-blue-600 dark:text-blue-400 leading-none ${todayLabelSizeClass}`}
           >
             今日
           </span>
@@ -235,18 +234,13 @@ export const VerticalDayRow: React.FC<VerticalDayRowProps> = ({
         )}
       </div>
 
-      {/* Events Lane:
-          When arrows pass through on days 2..end, offset by pl-6 to provide clean rail for arrow lines.
-          On start days, offset by pl-1 so the chip's anchor dot aligns precisely at x=76px!
-          Mobile layout uses CSS Grid (1fr 1fr 1fr auto when badge exists, 3 cols otherwise)
-          so 3 chips + badge fill the full width with zero trailing dead space.
-      */}
+      {/* Events Lane: seated directly above the underline */}
       <div
         className={`flex-1 grid ${
           visibleChips.length > 3
             ? 'grid-cols-[1fr_1fr_1fr_auto]'
             : 'grid-cols-3'
-        } sm:flex sm:items-center gap-1 items-center overflow-hidden min-w-0 transition-all ${
+        } sm:flex sm:items-end gap-1 items-end overflow-hidden min-w-0 transition-all pb-[1px] ${
           hasArrowPassing ? 'pl-6' : 'pl-1'
         }`}
       >

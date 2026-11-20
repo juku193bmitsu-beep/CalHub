@@ -215,22 +215,20 @@ export const EventChip: React.FC<EventChipProps> = ({
                 ...(customTextColor ? { color: customTextColor } : {}),
               }
         }
-        className={`w-full no-select cursor-grab active:cursor-grabbing transition-all select-none flex ${
-          timedEventStyle === 'underbar' ? 'items-end' : 'items-center'
-        } gap-1 shadow-2xs border hover:shadow-xs overflow-hidden ${
+        className={`w-full no-select cursor-grab active:cursor-grabbing transition-all select-none flex items-baseline gap-1 border hover:shadow-xs overflow-hidden ${
           isAllDay
-            ? 'rounded-lg px-1.5 sm:px-2 py-0.5 text-white shadow-xs'
+            ? 'rounded-md px-1.5 py-[2px] text-white shadow-2xs leading-none'
             : timedEventStyle === 'underbar'
-            ? 'px-1 pt-0 pb-[1.5px] text-slate-800 dark:text-slate-100 shadow-none'
-            : 'rounded-lg px-1.5 sm:px-2 py-0.5 text-slate-800 dark:text-slate-100'
-        } ${isCompact ? 'h-[20px]' : 'h-[23px]'} ${
+            ? 'px-0.5 pt-0 pb-[1.5px] text-slate-800 dark:text-slate-100 shadow-none leading-none'
+            : 'rounded-md px-1.5 py-[2px] text-slate-800 dark:text-slate-100 leading-none'
+        } ${
           isDragging ? 'opacity-40 scale-95 border-dashed border-blue-400' : ''
         }`}
       >
         {timeText && (
           <span
             style={customTextColor ? { color: customTextColor } : undefined}
-            className={`${timeSizeClass} opacity-80 font-normal tabular-nums shrink-0`}
+            className={`${timeSizeClass} opacity-80 font-normal tabular-nums shrink-0 leading-none`}
           >
             {timeText}
           </span>
@@ -238,7 +236,7 @@ export const EventChip: React.FC<EventChipProps> = ({
 
         <span
           style={customTextColor ? { color: customTextColor } : undefined}
-          className={`truncate leading-tight tracking-tight flex-1 ${titleSizeClass} ${titleWeightClass}`}
+          className={`truncate leading-none tracking-tight flex-1 ${titleSizeClass} ${titleWeightClass}`}
         >
           {event.summary || '(タイトルなし)'}
         </span>
