@@ -11,7 +11,7 @@ import {
   getEventEndDateInclusiveStr,
   addMonthsSafe,
 } from '../../services/dateUtils';
-import { computeWeekLayout, hexToRgba } from '../../services/calendarLayout';
+import { computeWeekLayout } from '../../services/calendarLayout';
 import { resolveEventTextColor } from '../../services/colorUtils';
 
 interface MonthlyViewProps {
@@ -48,7 +48,13 @@ const MonthGrid: React.FC<MonthGridProps> = React.memo(({
   onDragLeave,
   onDrop,
 }) => {
-  const { timedEventStyle, calendars, monthlyFontSize = 'large', monthlyFontWeight = 'bold' } = useCalendar();
+  const {
+    allDayEventStyle = 'filled',
+    timedEventStyle = 'underbar',
+    calendars,
+    monthlyFontSize = 'large',
+    monthlyFontWeight = 'bold',
+  } = useCalendar();
 
   const dayNumSizeClass =
     monthlyFontSize === 'xlarge'
@@ -307,7 +313,9 @@ const MonthGrid: React.FC<MonthGridProps> = React.memo(({
                 const isSpanOrAllDay = isAllDayOrMultiDay || span > 1;
                 const customTextColor = resolveEventTextColor(event, eventCal, isSpanOrAllDay, rawColor);
 
-                if (isSpanOrAllDay) {
+                const itemStyle = isSpanOrAllDay ? allDayEventStyle : timedEventStyle;
+
+                if (itemStyle === 'filled') {
                   return (
                     <div
                       key={`${event.id}-${startCol}`}
@@ -326,7 +334,7 @@ const MonthGrid: React.FC<MonthGridProps> = React.memo(({
                         top: `${topPx}px`,
                         height: '21px',
                         backgroundColor: rawColor,
-                        ...(customTextColor ? { color: customTextColor } : {}),
+                        ...(customTextColor ? { color: customTextColor } : { color: '#ffffff' }),
                       }}
                       className={`absolute pointer-events-auto flex items-center px-1.5 ${eventFontSizeClass} ${eventFontWeightClass} text-white shadow-2xs truncate cursor-grab active:cursor-grabbing hover:brightness-105 transition-all select-none ${
                         isStartsThisWeek ? 'rounded-l-md' : 'rounded-l-none'
@@ -344,10 +352,43 @@ const MonthGrid: React.FC<MonthGridProps> = React.memo(({
                   );
                 }
 
-                const isUnderbar = timedEventStyle === 'underbar';
-                const bgColorLight = hexToRgba(rawColor, 0.22);
-                const borderColorLight = hexToRgba(rawColor, 0.55);
+                if (itemStyle === 'underbar') {
+                  return (
+                    <div
+                      key={`${event.id}-${startCol}`}
+                      draggable
+                      onDragStart={(e) => {
+                        e.dataTransfer.setData('text/plain', event.id);
+                        e.dataTransfer.effectAllowed = 'move';
+                      }}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        onEventClick(event);
+                      }}
+                      style={{
+                        left: `calc(${leftPercent}% + 2px)`,
+                        width: `calc(${widthPercent}% - 4px)`,
+                        top: `${topPx}px`,
+                        height: '21px',
+                        backgroundColor: 'transparent',
+                        borderBottom: `2.5px solid ${rawColor}`,
+                        ...(customTextColor ? { color: customTextColor } : {}),
+                      }}
+                      className={`absolute pointer-events-auto flex items-center px-1 ${eventFontSizeClass} ${eventFontWeightClass} text-slate-900 dark:text-slate-100 truncate cursor-grab active:cursor-grabbing hover:brightness-95 dark:hover:brightness-110 transition-all select-none`}
+                      title={event.summary}
+                    >
+                      {!isStartsThisWeek && isSpanOrAllDay && (
+                        <span className="mr-0.5 text-[9px] opacity-75">◀</span>
+                      )}
+                      <span className="truncate">{event.summary || '(予定なし)'}</span>
+                      {!isEndsThisWeek && isSpanOrAllDay && (
+                        <span className="ml-auto pl-0.5 text-[9px] opacity-75">▶</span>
+                      )}
+                    </div>
+                  );
+                }
 
+                // itemStyle === 'none' (何もなし)
                 return (
                   <div
                     key={`${event.id}-${startCol}`}
@@ -365,17 +406,23 @@ const MonthGrid: React.FC<MonthGridProps> = React.memo(({
                       width: `calc(${widthPercent}% - 4px)`,
                       top: `${topPx}px`,
                       height: '21px',
-                      backgroundColor: isUnderbar ? 'transparent' : bgColorLight,
-                      borderColor: isUnderbar ? 'transparent' : borderColorLight,
-                      borderBottom: isUnderbar ? `2.5px solid ${rawColor}` : undefined,
+                      backgroundColor: 'transparent',
                       ...(customTextColor ? { color: customTextColor } : {}),
                     }}
-                    className={`absolute pointer-events-auto flex items-center px-1.5 ${eventFontSizeClass} ${eventFontWeightClass} text-slate-900 dark:text-slate-100 truncate cursor-grab active:cursor-grabbing hover:brightness-95 dark:hover:brightness-110 transition-all select-none ${
-                      isUnderbar ? 'rounded-none' : 'rounded-md border shadow-2xs'
-                    }`}
+                    className={`absolute pointer-events-auto flex items-center px-1 ${eventFontSizeClass} ${eventFontWeightClass} text-slate-900 dark:text-slate-100 truncate cursor-grab active:cursor-grabbing hover:brightness-95 dark:hover:brightness-110 transition-all select-none`}
                     title={event.summary}
                   >
+                    <span
+                      className="w-1.5 h-1.5 rounded-full mr-1 shrink-0 shadow-2xs"
+                      style={{ backgroundColor: rawColor }}
+                    />
+                    {!isStartsThisWeek && isSpanOrAllDay && (
+                      <span className="mr-0.5 text-[9px] opacity-75">◀</span>
+                    )}
                     <span className="truncate">{event.summary || '(予定なし)'}</span>
+                    {!isEndsThisWeek && isSpanOrAllDay && (
+                      <span className="ml-auto pl-0.5 text-[9px] opacity-75">▶</span>
+                    )}
                   </div>
                 );
               })}

@@ -3,8 +3,7 @@ import { GoogleCalendar } from '../types/calendar';
 import {
   ArrowDesignSettings,
   UserPreferences,
-  TimedEventStyle,
-  VerticalEventStyle,
+  EventDisplayStyle,
   VerticalFontSize,
   VerticalFontWeight,
   MonthlyFontSize,
@@ -26,10 +25,10 @@ interface CalendarContextType {
   setAllCalendarsVisible: (visible: boolean) => void;
   arrowSettings: ArrowDesignSettings;
   updateArrowSettings: (settings: Partial<ArrowDesignSettings>) => void;
-  timedEventStyle: TimedEventStyle;
-  setTimedEventStyle: (style: TimedEventStyle) => void;
-  verticalEventStyle: VerticalEventStyle;
-  setVerticalEventStyle: (style: VerticalEventStyle) => void;
+  allDayEventStyle: EventDisplayStyle;
+  setAllDayEventStyle: (style: EventDisplayStyle) => void;
+  timedEventStyle: EventDisplayStyle;
+  setTimedEventStyle: (style: EventDisplayStyle) => void;
   verticalFontSize: VerticalFontSize;
   setVerticalFontSize: (size: VerticalFontSize) => void;
   verticalFontWeight: VerticalFontWeight;
@@ -125,37 +124,39 @@ export const CalendarProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     return DEFAULT_ARROW_SETTINGS;
   });
 
-  const [timedEventStyle, setTimedEventStyle] = useState<TimedEventStyle>(() => {
+  // 終日・連日予定の表示スタイル（デフォルト: 'filled' = 濃い背景に白文字）
+  const [allDayEventStyle, setAllDayEventStyle] = useState<EventDisplayStyle>(() => {
     try {
       const saved = localStorage.getItem(STORAGE_KEY_PREFS);
       if (saved) {
         const parsed: UserPreferences = JSON.parse(saved);
-        if (parsed.timedEventStyle === 'underbar' || parsed.timedEventStyle === 'badge') {
-          return parsed.timedEventStyle;
+        if (parsed.allDayEventStyle === 'filled' || parsed.allDayEventStyle === 'underbar' || parsed.allDayEventStyle === 'none') {
+          return parsed.allDayEventStyle;
         }
       }
     } catch {
       // fallback
     }
-    return 'badge';
+    return 'filled'; // デフォルト: 濃い背景に白文字
   });
 
-  const [verticalEventStyle, setVerticalEventStyle] = useState<VerticalEventStyle>(() => {
+  // 時間指定予定の表示スタイル（デフォルト: 'underbar' = 黒文字でアンダーライン）
+  const [timedEventStyle, setTimedEventStyle] = useState<EventDisplayStyle>(() => {
     try {
       const saved = localStorage.getItem(STORAGE_KEY_PREFS);
       if (saved) {
         const parsed: UserPreferences = JSON.parse(saved);
-        if (parsed.verticalEventStyle === 'badge' || parsed.verticalEventStyle === 'underbar' || parsed.verticalEventStyle === 'none') {
-          return parsed.verticalEventStyle;
+        if (parsed.timedEventStyle === 'filled' || parsed.timedEventStyle === 'underbar' || parsed.timedEventStyle === 'none') {
+          return parsed.timedEventStyle;
         }
-        if (parsed.timedEventStyle === 'underbar') {
-          return 'underbar';
+        if ((parsed.timedEventStyle as any) === 'badge') {
+          return 'filled';
         }
       }
     } catch {
       // fallback
     }
-    return 'badge'; // Default to "囲む (badge)"
+    return 'underbar'; // デフォルト: 黒文字でアンダーライン（月表示・スマホ版と統一）
   });
 
   const [monthlyFontSize, setMonthlyFontSize] = useState<MonthlyFontSize>(() => {
@@ -303,8 +304,8 @@ export const CalendarProvider: React.FC<{ children: React.ReactNode }> = ({ chil
       const prefs: Partial<UserPreferences> = {
         visibleCalendarIds: Array.from(visibleCalendarIds),
         arrowSettings,
+        allDayEventStyle,
         timedEventStyle,
-        verticalEventStyle,
         verticalFontSize,
         verticalFontWeight,
         monthlyFontSize,
@@ -315,7 +316,7 @@ export const CalendarProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     } catch (e) {
       console.error('Failed to save preferences to localStorage', e);
     }
-  }, [visibleCalendarIds, arrowSettings, timedEventStyle, verticalEventStyle, verticalFontSize, verticalFontWeight, monthlyFontSize, monthlyFontWeight, theme]);
+  }, [visibleCalendarIds, arrowSettings, allDayEventStyle, timedEventStyle, verticalFontSize, verticalFontWeight, monthlyFontSize, monthlyFontWeight, theme]);
 
   const toggleCalendarVisibility = useCallback((id: string) => {
     setVisibleCalendarIds((prev) => {
@@ -382,10 +383,10 @@ export const CalendarProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         setAllCalendarsVisible,
         arrowSettings,
         updateArrowSettings,
+        allDayEventStyle,
+        setAllDayEventStyle,
         timedEventStyle,
         setTimedEventStyle,
-        verticalEventStyle,
-        setVerticalEventStyle,
         verticalFontSize,
         setVerticalFontSize,
         verticalFontWeight,

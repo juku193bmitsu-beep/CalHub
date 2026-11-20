@@ -18,7 +18,7 @@ interface EventChipProps {
   className?: string;
 }
 
-import { hexToRgba, resolveEventTextColor } from '../../services/colorUtils';
+import { resolveEventTextColor } from '../../services/colorUtils';
 
 export const EventChip: React.FC<EventChipProps> = ({
   event,
@@ -32,7 +32,13 @@ export const EventChip: React.FC<EventChipProps> = ({
 }) => {
   const { copyEvent } = useClipboard();
   const { deleteEvent } = useEvents();
-  const { calendars, verticalEventStyle = 'badge', verticalFontSize, verticalFontWeight } = useCalendar();
+  const {
+    calendars,
+    allDayEventStyle = 'filled',
+    timedEventStyle = 'underbar',
+    verticalFontSize,
+    verticalFontWeight,
+  } = useCalendar();
   const [showMenu, setShowMenu] = useState(false);
   const [menuPos, setMenuPos] = useState<{ x: number; y: number } | null>(null);
   const [isDragging, setIsDragging] = useState(false);
@@ -123,10 +129,6 @@ export const EventChip: React.FC<EventChipProps> = ({
   const rawColor = event.backgroundColor || calendar?.backgroundColor || '#039be5';
   const customTextColor = resolveEventTextColor(event, calendar, isAllDay, rawColor);
 
-  // Enhanced contrast for timed events: higher opacity & vivid border for mobile outdoor visibility
-  const bgColorLight = hexToRgba(rawColor, 0.22);
-  const borderColorLight = hexToRgba(rawColor, 0.55);
-
   // Typography mapping for title & time based on 7 fine-grained settings
   const titleSizeClass = isCompact
     ? verticalFontSize === 'huge'
@@ -178,6 +180,9 @@ export const EventChip: React.FC<EventChipProps> = ({
       ? 'text-[9px] sm:text-[9.5px]'
       : 'text-[8.5px] sm:text-[9px]';
 
+  // 終日・連日は allDayEventStyle、時間指定は timedEventStyle を適用
+  const styleType = isAllDay ? allDayEventStyle : timedEventStyle;
+
   return (
     <div
       onContextMenu={handleContextMenu}
@@ -193,7 +198,7 @@ export const EventChip: React.FC<EventChipProps> = ({
         onDragStart={handleDragStart}
         onDragEnd={handleDragEnd}
         style={
-          verticalEventStyle === 'underbar'
+          styleType === 'underbar'
             ? {
                 backgroundColor: 'transparent',
                 borderBottom: `2.5px solid ${rawColor}`,
@@ -203,39 +208,32 @@ export const EventChip: React.FC<EventChipProps> = ({
                 borderRadius: '0px',
                 ...(customTextColor ? { color: customTextColor } : {}),
               }
-            : verticalEventStyle === 'none'
+            : styleType === 'none'
             ? {
                 backgroundColor: 'transparent',
                 borderColor: 'transparent',
                 border: 'none',
                 ...(customTextColor ? { color: customTextColor } : {}),
               }
-            : isAllDay
-            ? {
+            : {
+                // 'filled' (濃い背景に白文字)
                 backgroundColor: rawColor,
                 borderColor: 'transparent',
                 ...(customTextColor ? { color: customTextColor } : { color: '#ffffff' }),
               }
-            : {
-                backgroundColor: bgColorLight,
-                borderColor: borderColorLight,
-                ...(customTextColor ? { color: customTextColor } : {}),
-              }
         }
         className={`w-full no-select cursor-grab active:cursor-grabbing transition-all select-none flex items-center gap-1 overflow-hidden ${
-          verticalEventStyle === 'underbar'
+          styleType === 'underbar'
             ? 'px-1 pt-0 pb-[1.5px] text-slate-800 dark:text-slate-100 shadow-none leading-none border-b-[2.5px]'
-            : verticalEventStyle === 'none'
+            : styleType === 'none'
             ? 'px-1 py-[1.5px] text-slate-800 dark:text-slate-100 shadow-none border-0 leading-none hover:bg-slate-100/60 dark:hover:bg-slate-800/40 rounded'
-            : isAllDay
-            ? 'rounded-md px-1.5 py-[2px] text-white shadow-2xs border border-transparent leading-none'
-            : 'rounded-md px-1.5 py-[2px] text-slate-800 dark:text-slate-100 border leading-none shadow-2xs'
+            : 'rounded-md px-1.5 py-[2px] text-white shadow-2xs border border-transparent leading-none'
         } ${
           isDragging ? 'opacity-40 scale-95 border-dashed border-blue-400' : ''
         }`}
       >
-        {/* For "none" style (no outline, no underbar), show a neat color dot indicator */}
-        {verticalEventStyle === 'none' && (
+        {/* For "none" style (何もなし), show a neat color dot indicator */}
+        {styleType === 'none' && (
           <span
             className="w-2 h-2 rounded-full shrink-0 shadow-2xs"
             style={{ backgroundColor: rawColor }}
@@ -245,7 +243,9 @@ export const EventChip: React.FC<EventChipProps> = ({
         {timeText && (
           <span
             style={customTextColor ? { color: customTextColor } : undefined}
-            className={`${timeSizeClass} opacity-80 font-normal tabular-nums shrink-0 leading-none`}
+            className={`${timeSizeClass} ${
+              styleType === 'filled' ? 'text-white/90' : 'text-slate-500 dark:text-slate-400'
+            } font-normal tabular-nums shrink-0 leading-none`}
           >
             {timeText}
           </span>
@@ -253,7 +253,9 @@ export const EventChip: React.FC<EventChipProps> = ({
 
         <span
           style={customTextColor ? { color: customTextColor } : undefined}
-          className={`truncate leading-none tracking-tight flex-1 ${titleSizeClass} ${titleWeightClass}`}
+          className={`truncate leading-none tracking-tight flex-1 ${titleSizeClass} ${titleWeightClass} ${
+            styleType === 'filled' ? 'text-white' : 'text-slate-800 dark:text-slate-100'
+          }`}
         >
           {event.summary || '(タイトルなし)'}
         </span>

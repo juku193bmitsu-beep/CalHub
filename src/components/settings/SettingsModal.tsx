@@ -6,7 +6,7 @@ import {
   ArrowThickness,
   ArrowPattern,
   ArrowHeadStyle,
-  VerticalEventStyle,
+  EventDisplayStyle,
   VerticalFontSize,
   VerticalFontWeight,
   MonthlyFontSize,
@@ -51,8 +51,10 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
     setAllCalendarsVisible,
     arrowSettings,
     updateArrowSettings,
-    verticalEventStyle,
-    setVerticalEventStyle,
+    allDayEventStyle,
+    setAllDayEventStyle,
+    timedEventStyle,
+    setTimedEventStyle,
     verticalFontSize,
     setVerticalFontSize,
     verticalFontWeight,
@@ -179,10 +181,16 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
     { id: 'extrabold', label: '極太' },
   ];
 
-  const verticalStyles: { id: VerticalEventStyle; label: string; desc: string }[] = [
-    { id: 'badge', label: '囲む (バッジ)', desc: '背景色と枠線で囲む' },
-    { id: 'underbar', label: 'アンダーライン (下線)', desc: '下部にラインを引く' },
-    { id: 'none', label: '何もなし (テキスト)', desc: '枠線も下線もないミニマル' },
+  const allDayStyles: { id: EventDisplayStyle; label: string; desc: string }[] = [
+    { id: 'filled', label: '濃い (推奨)', desc: '濃い背景に白文字' },
+    { id: 'underbar', label: 'アンダーライン', desc: '黒文字に下線' },
+    { id: 'none', label: '何もなし', desc: 'ドットと文字のみ' },
+  ];
+
+  const timedStyles: { id: EventDisplayStyle; label: string; desc: string }[] = [
+    { id: 'underbar', label: 'アンダーライン (推奨)', desc: '黒文字に下線' },
+    { id: 'filled', label: '濃い', desc: '濃い背景に白文字' },
+    { id: 'none', label: '何もなし', desc: 'ドットと文字のみ' },
   ];
 
   const monthlyFontSizes: { id: MonthlyFontSize; label: string; desc: string }[] = [
@@ -697,36 +705,86 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
           {/* TAB 3: ARROW & VIEW STYLES */}
           {activeTab === 'arrows' && (
             <div className="space-y-4">
-              {/* Vertical View Event Style Selection (囲む / アンダーライン / 何もなし) */}
+              {/* All-Day Events Style: 濃い | アンダーライン | 何もなし */}
               <div>
-                <label className="text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1.5 block">
-                  縦型カレンダーの予定スタイル（3種類）
-                </label>
+                <div className="flex items-center justify-between mb-1.5">
+                  <label className="text-xs font-bold text-slate-800 dark:text-slate-200 block">
+                    終日・連日予定の表示スタイル
+                  </label>
+                  <span className="text-[10px] text-blue-600 dark:text-blue-400 font-medium">
+                    基本: 濃い（白文字）
+                  </span>
+                </div>
                 <div className="grid grid-cols-3 gap-2">
-                  {verticalStyles.map((style) => (
+                  {allDayStyles.map((style) => (
                     <button
                       key={style.id}
                       type="button"
-                      onClick={() => setVerticalEventStyle(style.id)}
+                      onClick={() => setAllDayEventStyle(style.id)}
                       className={`p-2.5 rounded-2xl border text-left transition flex flex-col gap-1.5 cursor-pointer ${
-                        verticalEventStyle === style.id
+                        allDayEventStyle === style.id
                           ? 'border-blue-500 bg-blue-50/70 dark:bg-blue-950/40 text-blue-600 dark:text-blue-400 font-bold shadow-2xs ring-1 ring-blue-400/50'
                           : 'border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-300'
                       }`}
                     >
                       <span className="text-xs font-bold">{style.label}</span>
-                      {style.id === 'badge' ? (
-                        <div className="px-1.5 py-0.5 rounded-md border border-blue-400/60 bg-blue-100/50 dark:bg-blue-900/40 text-[10px] text-blue-800 dark:text-blue-200 truncate font-medium">
-                          10:00 予定
+                      {style.id === 'filled' ? (
+                        <div className="px-1.5 py-0.5 rounded-md bg-blue-600 text-white text-[10px] truncate font-medium shadow-2xs">
+                          終日出張
                         </div>
                       ) : style.id === 'underbar' ? (
                         <div className="px-1 py-0.5 border-b-[2.5px] border-blue-500 text-[10px] text-slate-800 dark:text-slate-100 truncate font-medium">
-                          10:00 予定
+                          終日出張
+                        </div>
+                      ) : (
+                        <div className="px-1 py-0.5 flex items-center gap-1 text-[10px] text-slate-800 dark:text-slate-100 truncate font-medium">
+                          <span className="w-1.5 h-1.5 rounded-full bg-blue-600 shrink-0" />
+                          <span>終日出張</span>
+                        </div>
+                      )}
+                      <span className="text-[10px] text-slate-400 dark:text-slate-500 truncate">
+                        {style.desc}
+                      </span>
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Timed Events Style: アンダーライン | 濃い | 何もなし */}
+              <div>
+                <div className="flex items-center justify-between mb-1.5">
+                  <label className="text-xs font-bold text-slate-800 dark:text-slate-200 block">
+                    時間指定予定の表示スタイル
+                  </label>
+                  <span className="text-[10px] text-blue-600 dark:text-blue-400 font-medium">
+                    基本: アンダーライン
+                  </span>
+                </div>
+                <div className="grid grid-cols-3 gap-2">
+                  {timedStyles.map((style) => (
+                    <button
+                      key={style.id}
+                      type="button"
+                      onClick={() => setTimedEventStyle(style.id)}
+                      className={`p-2.5 rounded-2xl border text-left transition flex flex-col gap-1.5 cursor-pointer ${
+                        timedEventStyle === style.id
+                          ? 'border-blue-500 bg-blue-50/70 dark:bg-blue-950/40 text-blue-600 dark:text-blue-400 font-bold shadow-2xs ring-1 ring-blue-400/50'
+                          : 'border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-300'
+                      }`}
+                    >
+                      <span className="text-xs font-bold">{style.label}</span>
+                      {style.id === 'underbar' ? (
+                        <div className="px-1 py-0.5 border-b-[2.5px] border-blue-500 text-[10px] text-slate-800 dark:text-slate-100 truncate font-medium">
+                          10:00 会議
+                        </div>
+                      ) : style.id === 'filled' ? (
+                        <div className="px-1.5 py-0.5 rounded-md bg-blue-600 text-white text-[10px] truncate font-medium shadow-2xs">
+                          10:00 会議
                         </div>
                       ) : (
                         <div className="px-1 py-0.5 flex items-center gap-1 text-[10px] text-slate-800 dark:text-slate-100 truncate font-medium">
                           <span className="w-1.5 h-1.5 rounded-full bg-blue-500 shrink-0" />
-                          <span>10:00 予定</span>
+                          <span>10:00 会議</span>
                         </div>
                       )}
                       <span className="text-[10px] text-slate-400 dark:text-slate-500 truncate">
@@ -797,53 +855,57 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                     </span>
                   </div>
 
-                  <div className="flex-1 min-w-0">
+                  <div className="flex-1 min-w-0 space-y-1">
+                    {/* 終日予定プレビュー */}
                     <div
-                      className="h-[22px] px-2 rounded-lg bg-blue-500/20 border border-blue-500/60 flex items-center gap-1.5 overflow-hidden"
+                      style={
+                        allDayEventStyle === 'underbar'
+                          ? { borderBottom: '2.5px solid #3b82f6', backgroundColor: 'transparent' }
+                          : allDayEventStyle === 'none'
+                          ? { backgroundColor: 'transparent' }
+                          : { backgroundColor: '#3b82f6' }
+                      }
+                      className={`h-[20px] px-2 flex items-center gap-1 overflow-hidden ${
+                        allDayEventStyle === 'underbar'
+                          ? 'border-b-[2.5px] border-blue-500 text-slate-800 dark:text-slate-100 rounded-none'
+                          : allDayEventStyle === 'none'
+                          ? 'text-slate-800 dark:text-slate-100'
+                          : 'rounded-md text-white shadow-2xs'
+                      }`}
                     >
-                      <span
-                        className={`${
-                          verticalFontSize === 'huge'
-                            ? 'text-[11.5px]'
-                            : verticalFontSize === 'xlarge'
-                            ? 'text-[11px]'
-                            : verticalFontSize === 'large'
-                            ? 'text-[10.5px]'
-                            : verticalFontSize === 'medium'
-                            ? 'text-[10px]'
-                            : verticalFontSize === 'normal'
-                            ? 'text-[9.5px]'
-                            : verticalFontSize === 'small'
-                            ? 'text-[9px]'
-                            : 'text-[8.5px]'
-                        } opacity-80 font-normal tabular-nums shrink-0 text-slate-700 dark:text-slate-200`}
-                      >
+                      {allDayEventStyle === 'none' && (
+                        <span className="w-1.5 h-1.5 rounded-full bg-blue-500 shrink-0 shadow-2xs" />
+                      )}
+                      <span className={`truncate leading-none ${verticalFontSize === 'huge' ? 'text-xs' : 'text-[11px]'} ${verticalFontWeight === 'extrabold' ? 'font-black' : verticalFontWeight === 'bold' ? 'font-bold' : 'font-medium'} ${allDayEventStyle === 'filled' ? 'text-white' : 'text-slate-800 dark:text-slate-100'}`}>
+                        終日出張
+                      </span>
+                    </div>
+
+                    {/* 時間指定予定プレビュー */}
+                    <div
+                      style={
+                        timedEventStyle === 'underbar'
+                          ? { borderBottom: '2.5px solid #3b82f6', backgroundColor: 'transparent' }
+                          : timedEventStyle === 'none'
+                          ? { backgroundColor: 'transparent' }
+                          : { backgroundColor: '#3b82f6' }
+                      }
+                      className={`h-[20px] px-2 flex items-center gap-1 overflow-hidden ${
+                        timedEventStyle === 'underbar'
+                          ? 'border-b-[2.5px] border-blue-500 text-slate-800 dark:text-slate-100 rounded-none'
+                          : timedEventStyle === 'none'
+                          ? 'text-slate-800 dark:text-slate-100'
+                          : 'rounded-md text-white shadow-2xs'
+                      }`}
+                    >
+                      {timedEventStyle === 'none' && (
+                        <span className="w-1.5 h-1.5 rounded-full bg-blue-500 shrink-0 shadow-2xs" />
+                      )}
+                      <span className={`text-[10px] tabular-nums font-normal shrink-0 ${timedEventStyle === 'filled' ? 'text-white/90' : 'text-slate-500 dark:text-slate-400'}`}>
                         10:00
                       </span>
-                      <span
-                        className={`truncate leading-tight tracking-tight flex-1 ${
-                          verticalFontSize === 'huge'
-                            ? 'text-[14px]'
-                            : verticalFontSize === 'xlarge'
-                            ? 'text-[13px]'
-                            : verticalFontSize === 'large'
-                            ? 'text-[12.5px]'
-                            : verticalFontSize === 'medium'
-                            ? 'text-[12px]'
-                            : verticalFontSize === 'normal'
-                            ? 'text-[11px]'
-                            : verticalFontSize === 'small'
-                            ? 'text-[10px]'
-                            : 'text-[9.5px]'
-                        } ${
-                          verticalFontWeight === 'extrabold'
-                            ? 'font-extrabold'
-                            : verticalFontWeight === 'bold'
-                            ? 'font-bold'
-                            : 'font-medium'
-                        } text-slate-800 dark:text-slate-100`}
-                      >
-                        企画会議（新製品）
+                      <span className={`truncate leading-none ${verticalFontSize === 'huge' ? 'text-xs' : 'text-[11px]'} ${verticalFontWeight === 'extrabold' ? 'font-black' : verticalFontWeight === 'bold' ? 'font-bold' : 'font-medium'} ${timedEventStyle === 'filled' ? 'text-white' : 'text-slate-800 dark:text-slate-100'}`}>
+                        企画会議
                       </span>
                     </div>
                   </div>
