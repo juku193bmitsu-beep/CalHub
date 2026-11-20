@@ -6,8 +6,11 @@ import {
   ArrowThickness,
   ArrowPattern,
   ArrowHeadStyle,
+  VerticalEventStyle,
   VerticalFontSize,
   VerticalFontWeight,
+  MonthlyFontSize,
+  MonthlyFontWeight,
 } from '../../types/settings';
 import {
   X,
@@ -48,12 +51,16 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
     setAllCalendarsVisible,
     arrowSettings,
     updateArrowSettings,
-    timedEventStyle,
-    setTimedEventStyle,
+    verticalEventStyle,
+    setVerticalEventStyle,
     verticalFontSize,
     setVerticalFontSize,
     verticalFontWeight,
     setVerticalFontWeight,
+    monthlyFontSize,
+    setMonthlyFontSize,
+    monthlyFontWeight,
+    setMonthlyFontWeight,
     authToken,
     setAuthToken,
     theme,
@@ -167,6 +174,25 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
   ];
 
   const fontWeights: { id: VerticalFontWeight; label: string }[] = [
+    { id: 'normal', label: '通常' },
+    { id: 'bold', label: '太字 (推奨)' },
+    { id: 'extrabold', label: '極太' },
+  ];
+
+  const verticalStyles: { id: VerticalEventStyle; label: string; desc: string }[] = [
+    { id: 'badge', label: '囲む (バッジ)', desc: '背景色と枠線で囲む' },
+    { id: 'underbar', label: 'アンダーライン (下線)', desc: '下部にラインを引く' },
+    { id: 'none', label: '何もなし (テキスト)', desc: '枠線も下線もないミニマル' },
+  ];
+
+  const monthlyFontSizes: { id: MonthlyFontSize; label: string; desc: string }[] = [
+    { id: 'small', label: '小', desc: 'コンパクト' },
+    { id: 'normal', label: '標準', desc: '標準サイズ' },
+    { id: 'large', label: '大 (推奨)', desc: '見やすく快適' },
+    { id: 'xlarge', label: '特大', desc: '最大サイズ' },
+  ];
+
+  const monthlyFontWeights: { id: MonthlyFontWeight; label: string }[] = [
     { id: 'normal', label: '通常' },
     { id: 'bold', label: '太字 (推奨)' },
     { id: 'extrabold', label: '極太' },
@@ -668,44 +694,46 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
             </div>
           )}
 
-          {/* TAB 3: ARROW STYLES */}
+          {/* TAB 3: ARROW & VIEW STYLES */}
           {activeTab === 'arrows' && (
             <div className="space-y-4">
-              {/* Timed Event Display Style Selection */}
+              {/* Vertical View Event Style Selection (囲む / アンダーライン / 何もなし) */}
               <div>
                 <label className="text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1.5 block">
-                  時間指定予定の表示スタイル
+                  縦型カレンダーの予定スタイル（3種類）
                 </label>
-                <div className="grid grid-cols-2 gap-2">
-                  <button
-                    type="button"
-                    onClick={() => setTimedEventStyle('badge')}
-                    className={`p-2.5 rounded-2xl border text-left transition flex flex-col gap-1.5 cursor-pointer ${
-                      timedEventStyle === 'badge'
-                        ? 'border-blue-500 bg-blue-50/60 dark:bg-blue-950/40 text-blue-600 dark:text-blue-400 font-bold shadow-2xs'
-                        : 'border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-300'
-                    }`}
-                  >
-                    <span className="text-xs font-semibold">枠囲みバッジ</span>
-                    <div className="px-2 py-0.5 rounded-lg border border-blue-400/60 bg-blue-100/50 dark:bg-blue-900/40 text-[10px] text-blue-800 dark:text-blue-200 truncate">
-                      10:00 会議
-                    </div>
-                  </button>
-
-                  <button
-                    type="button"
-                    onClick={() => setTimedEventStyle('underbar')}
-                    className={`p-2.5 rounded-2xl border text-left transition flex flex-col gap-1.5 cursor-pointer ${
-                      timedEventStyle === 'underbar'
-                        ? 'border-blue-500 bg-blue-50/60 dark:bg-blue-950/40 text-blue-600 dark:text-blue-400 font-bold shadow-2xs'
-                        : 'border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-300'
-                    }`}
-                  >
-                    <span className="text-xs font-semibold">アンダーバー (下線)</span>
-                    <div className="px-1 py-0.5 border-b-[2.5px] border-blue-500 text-[10px] text-slate-800 dark:text-slate-100 truncate">
-                      10:00 会議
-                    </div>
-                  </button>
+                <div className="grid grid-cols-3 gap-2">
+                  {verticalStyles.map((style) => (
+                    <button
+                      key={style.id}
+                      type="button"
+                      onClick={() => setVerticalEventStyle(style.id)}
+                      className={`p-2.5 rounded-2xl border text-left transition flex flex-col gap-1.5 cursor-pointer ${
+                        verticalEventStyle === style.id
+                          ? 'border-blue-500 bg-blue-50/70 dark:bg-blue-950/40 text-blue-600 dark:text-blue-400 font-bold shadow-2xs ring-1 ring-blue-400/50'
+                          : 'border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-300'
+                      }`}
+                    >
+                      <span className="text-xs font-bold">{style.label}</span>
+                      {style.id === 'badge' ? (
+                        <div className="px-1.5 py-0.5 rounded-md border border-blue-400/60 bg-blue-100/50 dark:bg-blue-900/40 text-[10px] text-blue-800 dark:text-blue-200 truncate font-medium">
+                          10:00 予定
+                        </div>
+                      ) : style.id === 'underbar' ? (
+                        <div className="px-1 py-0.5 border-b-[2.5px] border-blue-500 text-[10px] text-slate-800 dark:text-slate-100 truncate font-medium">
+                          10:00 予定
+                        </div>
+                      ) : (
+                        <div className="px-1 py-0.5 flex items-center gap-1 text-[10px] text-slate-800 dark:text-slate-100 truncate font-medium">
+                          <span className="w-1.5 h-1.5 rounded-full bg-blue-500 shrink-0" />
+                          <span>10:00 予定</span>
+                        </div>
+                      )}
+                      <span className="text-[10px] text-slate-400 dark:text-slate-500 truncate">
+                        {style.desc}
+                      </span>
+                    </button>
+                  ))}
                 </div>
               </div>
 
@@ -904,6 +932,153 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                         onClick={() => setVerticalFontWeight(item.id)}
                         className={`py-1.5 px-2 rounded-lg text-xs font-semibold transition active:scale-95 ${
                           verticalFontWeight === item.id
+                            ? 'bg-white dark:bg-slate-800 text-blue-600 dark:text-blue-400 shadow-xs'
+                            : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-100'
+                        }`}
+                      >
+                        {item.label}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              </div>
+
+              {/* Monthly Typography: Font Size & Weight Customization */}
+              <div className="p-3.5 rounded-2xl bg-slate-50/80 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700/80 space-y-3">
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-bold text-slate-800 dark:text-slate-200">
+                    月間カレンダーの文字設定（日付・曜日・予定）
+                  </span>
+                  <span className="text-[10px] text-blue-600 dark:text-blue-400 font-semibold bg-blue-100/70 dark:bg-blue-900/50 px-2 py-0.5 rounded-full">
+                    月表示に即時反映
+                  </span>
+                </div>
+
+                {/* Monthly Preview */}
+                <div className="p-2.5 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700/80 flex items-center gap-3">
+                  <div className="flex flex-col items-center justify-center shrink-0 w-12 border-r border-slate-200 dark:border-slate-700 pr-2">
+                    <span
+                      className={`text-slate-500 dark:text-slate-400 leading-none mb-1 ${
+                        monthlyFontSize === 'xlarge'
+                          ? 'text-xs'
+                          : monthlyFontSize === 'large'
+                          ? 'text-[11px]'
+                          : monthlyFontSize === 'normal'
+                          ? 'text-[10px]'
+                          : 'text-[9px]'
+                      } ${
+                        monthlyFontWeight === 'extrabold'
+                          ? 'font-black'
+                          : monthlyFontWeight === 'bold'
+                          ? 'font-bold'
+                          : 'font-normal'
+                      }`}
+                    >
+                      金
+                    </span>
+                    <span
+                      className={`tabular-nums leading-none text-blue-600 dark:text-blue-400 ${
+                        monthlyFontSize === 'xlarge'
+                          ? 'text-lg font-black'
+                          : monthlyFontSize === 'large'
+                          ? 'text-base font-bold'
+                          : monthlyFontSize === 'normal'
+                          ? 'text-sm font-bold'
+                          : 'text-xs font-semibold'
+                      } ${
+                        monthlyFontWeight === 'extrabold'
+                          ? 'font-black'
+                          : monthlyFontWeight === 'bold'
+                          ? 'font-bold'
+                          : 'font-normal'
+                      }`}
+                    >
+                      21
+                    </span>
+                  </div>
+
+                  <div className="flex-1 min-w-0 space-y-1">
+                    <div
+                      className={`px-2 py-0.5 rounded bg-blue-600 text-white truncate shadow-2xs ${
+                        monthlyFontSize === 'xlarge'
+                          ? 'text-xs'
+                          : monthlyFontSize === 'large'
+                          ? 'text-[11.5px]'
+                          : monthlyFontSize === 'normal'
+                          ? 'text-[10.5px]'
+                          : 'text-[9.5px]'
+                      } ${
+                        monthlyFontWeight === 'extrabold'
+                          ? 'font-black'
+                          : monthlyFontWeight === 'bold'
+                          ? 'font-bold'
+                          : 'font-medium'
+                      }`}
+                    >
+                      終日出張
+                    </div>
+                    <div
+                      className={`px-2 py-0.5 rounded border border-blue-400/60 bg-blue-50 dark:bg-blue-950/60 text-slate-800 dark:text-slate-100 truncate ${
+                        monthlyFontSize === 'xlarge'
+                          ? 'text-xs'
+                          : monthlyFontSize === 'large'
+                          ? 'text-[11.5px]'
+                          : monthlyFontSize === 'normal'
+                          ? 'text-[10.5px]'
+                          : 'text-[9.5px]'
+                      } ${
+                        monthlyFontWeight === 'extrabold'
+                          ? 'font-black'
+                          : monthlyFontWeight === 'bold'
+                          ? 'font-bold'
+                          : 'font-medium'
+                      }`}
+                    >
+                      14:00 定例ミーティング
+                    </div>
+                  </div>
+                </div>
+
+                {/* Monthly Font Size Selector */}
+                <div>
+                  <div className="flex items-center justify-between text-[11px] font-semibold text-slate-600 dark:text-slate-400 mb-1.5">
+                    <span>文字の大きさ</span>
+                    <span className="text-blue-600 dark:text-blue-400 font-bold">
+                      {monthlyFontSizes.find((f) => f.id === monthlyFontSize)?.label || '大'}
+                    </span>
+                  </div>
+                  <div className="grid grid-cols-4 gap-1.5 bg-slate-200/60 dark:bg-slate-700/60 p-1 rounded-xl">
+                    {monthlyFontSizes.map((item) => (
+                      <button
+                        key={item.id}
+                        type="button"
+                        onClick={() => setMonthlyFontSize(item.id)}
+                        className={`py-1.5 px-1 rounded-lg text-xs font-semibold transition active:scale-95 text-center ${
+                          monthlyFontSize === item.id
+                            ? 'bg-white dark:bg-slate-800 text-blue-600 dark:text-blue-400 shadow-xs font-bold'
+                            : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-100'
+                        }`}
+                        title={item.desc}
+                      >
+                        {item.label}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Monthly Font Weight Selector */}
+                <div>
+                  <div className="text-[11px] font-semibold text-slate-600 dark:text-slate-400 mb-1.5">
+                    文字の太さ
+                  </div>
+                  <div className="grid grid-cols-3 gap-1.5 bg-slate-200/60 dark:bg-slate-700/60 p-1 rounded-xl">
+                    {monthlyFontWeights.map((item) => (
+                      <button
+                        key={item.id}
+                        type="button"
+                        onClick={() => setMonthlyFontWeight(item.id)}
+                        className={`py-1.5 px-2 rounded-lg text-xs font-semibold transition active:scale-95 ${
+                          monthlyFontWeight === item.id
                             ? 'bg-white dark:bg-slate-800 text-blue-600 dark:text-blue-400 shadow-xs'
                             : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-100'
                         }`}

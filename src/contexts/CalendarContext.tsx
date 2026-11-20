@@ -4,8 +4,11 @@ import {
   ArrowDesignSettings,
   UserPreferences,
   TimedEventStyle,
+  VerticalEventStyle,
   VerticalFontSize,
   VerticalFontWeight,
+  MonthlyFontSize,
+  MonthlyFontWeight,
 } from '../types/settings';
 import { MOCK_CALENDARS } from '../services/mockData';
 import { CalendarApiService } from '../services/calendarApi';
@@ -25,10 +28,16 @@ interface CalendarContextType {
   updateArrowSettings: (settings: Partial<ArrowDesignSettings>) => void;
   timedEventStyle: TimedEventStyle;
   setTimedEventStyle: (style: TimedEventStyle) => void;
+  verticalEventStyle: VerticalEventStyle;
+  setVerticalEventStyle: (style: VerticalEventStyle) => void;
   verticalFontSize: VerticalFontSize;
   setVerticalFontSize: (size: VerticalFontSize) => void;
   verticalFontWeight: VerticalFontWeight;
   setVerticalFontWeight: (weight: VerticalFontWeight) => void;
+  monthlyFontSize: MonthlyFontSize;
+  setMonthlyFontSize: (size: MonthlyFontSize) => void;
+  monthlyFontWeight: MonthlyFontWeight;
+  setMonthlyFontWeight: (weight: MonthlyFontWeight) => void;
   theme: 'light' | 'dark';
   toggleTheme: () => void;
   authToken: string | null;
@@ -129,6 +138,54 @@ export const CalendarProvider: React.FC<{ children: React.ReactNode }> = ({ chil
       // fallback
     }
     return 'badge';
+  });
+
+  const [verticalEventStyle, setVerticalEventStyle] = useState<VerticalEventStyle>(() => {
+    try {
+      const saved = localStorage.getItem(STORAGE_KEY_PREFS);
+      if (saved) {
+        const parsed: UserPreferences = JSON.parse(saved);
+        if (parsed.verticalEventStyle === 'badge' || parsed.verticalEventStyle === 'underbar' || parsed.verticalEventStyle === 'none') {
+          return parsed.verticalEventStyle;
+        }
+        if (parsed.timedEventStyle === 'underbar') {
+          return 'underbar';
+        }
+      }
+    } catch {
+      // fallback
+    }
+    return 'badge'; // Default to "囲む (badge)"
+  });
+
+  const [monthlyFontSize, setMonthlyFontSize] = useState<MonthlyFontSize>(() => {
+    try {
+      const saved = localStorage.getItem(STORAGE_KEY_PREFS);
+      if (saved) {
+        const parsed: UserPreferences = JSON.parse(saved);
+        if (parsed.monthlyFontSize) {
+          return parsed.monthlyFontSize;
+        }
+      }
+    } catch {
+      // fallback
+    }
+    return 'large'; // Default to large for clear visibility
+  });
+
+  const [monthlyFontWeight, setMonthlyFontWeight] = useState<MonthlyFontWeight>(() => {
+    try {
+      const saved = localStorage.getItem(STORAGE_KEY_PREFS);
+      if (saved) {
+        const parsed: UserPreferences = JSON.parse(saved);
+        if (parsed.monthlyFontWeight) {
+          return parsed.monthlyFontWeight;
+        }
+      }
+    } catch {
+      // fallback
+    }
+    return 'bold'; // Default to bold for clear visibility
   });
 
   const [verticalFontSize, setVerticalFontSize] = useState<VerticalFontSize>(() => {
@@ -247,15 +304,18 @@ export const CalendarProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         visibleCalendarIds: Array.from(visibleCalendarIds),
         arrowSettings,
         timedEventStyle,
+        verticalEventStyle,
         verticalFontSize,
         verticalFontWeight,
+        monthlyFontSize,
+        monthlyFontWeight,
         theme,
       };
       localStorage.setItem(STORAGE_KEY_PREFS, JSON.stringify(prefs));
     } catch (e) {
       console.error('Failed to save preferences to localStorage', e);
     }
-  }, [visibleCalendarIds, arrowSettings, timedEventStyle, verticalFontSize, verticalFontWeight, theme]);
+  }, [visibleCalendarIds, arrowSettings, timedEventStyle, verticalEventStyle, verticalFontSize, verticalFontWeight, monthlyFontSize, monthlyFontWeight, theme]);
 
   const toggleCalendarVisibility = useCallback((id: string) => {
     setVisibleCalendarIds((prev) => {
@@ -324,10 +384,16 @@ export const CalendarProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         updateArrowSettings,
         timedEventStyle,
         setTimedEventStyle,
+        verticalEventStyle,
+        setVerticalEventStyle,
         verticalFontSize,
         setVerticalFontSize,
         verticalFontWeight,
         setVerticalFontWeight,
+        monthlyFontSize,
+        setMonthlyFontSize,
+        monthlyFontWeight,
+        setMonthlyFontWeight,
         theme,
         toggleTheme,
         authToken,

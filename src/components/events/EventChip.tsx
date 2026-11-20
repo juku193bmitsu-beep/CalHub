@@ -32,7 +32,7 @@ export const EventChip: React.FC<EventChipProps> = ({
 }) => {
   const { copyEvent } = useClipboard();
   const { deleteEvent } = useEvents();
-  const { calendars, timedEventStyle, verticalFontSize, verticalFontWeight } = useCalendar();
+  const { calendars, verticalEventStyle = 'badge', verticalFontSize, verticalFontWeight } = useCalendar();
   const [showMenu, setShowMenu] = useState(false);
   const [menuPos, setMenuPos] = useState<{ x: number; y: number } | null>(null);
   const [isDragging, setIsDragging] = useState(false);
@@ -193,21 +193,28 @@ export const EventChip: React.FC<EventChipProps> = ({
         onDragStart={handleDragStart}
         onDragEnd={handleDragEnd}
         style={
-          isAllDay
-            ? {
-                backgroundColor: rawColor,
-                borderColor: 'transparent',
-                ...(customTextColor ? { color: customTextColor } : { color: '#ffffff' }),
-              }
-            : timedEventStyle === 'underbar'
+          verticalEventStyle === 'underbar'
             ? {
                 backgroundColor: 'transparent',
                 borderBottom: `2.5px solid ${rawColor}`,
                 borderTop: 'none',
                 borderLeft: 'none',
                 borderRight: 'none',
-                borderRadius: '2px',
+                borderRadius: '0px',
                 ...(customTextColor ? { color: customTextColor } : {}),
+              }
+            : verticalEventStyle === 'none'
+            ? {
+                backgroundColor: 'transparent',
+                borderColor: 'transparent',
+                border: 'none',
+                ...(customTextColor ? { color: customTextColor } : {}),
+              }
+            : isAllDay
+            ? {
+                backgroundColor: rawColor,
+                borderColor: 'transparent',
+                ...(customTextColor ? { color: customTextColor } : { color: '#ffffff' }),
               }
             : {
                 backgroundColor: bgColorLight,
@@ -215,16 +222,26 @@ export const EventChip: React.FC<EventChipProps> = ({
                 ...(customTextColor ? { color: customTextColor } : {}),
               }
         }
-        className={`w-full no-select cursor-grab active:cursor-grabbing transition-all select-none flex items-baseline gap-1 border hover:shadow-xs overflow-hidden ${
-          isAllDay
-            ? 'rounded-md px-1.5 py-[2px] text-white shadow-2xs leading-none'
-            : timedEventStyle === 'underbar'
-            ? 'px-0.5 pt-0 pb-[1.5px] text-slate-800 dark:text-slate-100 shadow-none leading-none'
-            : 'rounded-md px-1.5 py-[2px] text-slate-800 dark:text-slate-100 leading-none'
+        className={`w-full no-select cursor-grab active:cursor-grabbing transition-all select-none flex items-center gap-1 overflow-hidden ${
+          verticalEventStyle === 'underbar'
+            ? 'px-1 pt-0 pb-[1.5px] text-slate-800 dark:text-slate-100 shadow-none leading-none border-b-[2.5px]'
+            : verticalEventStyle === 'none'
+            ? 'px-1 py-[1.5px] text-slate-800 dark:text-slate-100 shadow-none border-0 leading-none hover:bg-slate-100/60 dark:hover:bg-slate-800/40 rounded'
+            : isAllDay
+            ? 'rounded-md px-1.5 py-[2px] text-white shadow-2xs border border-transparent leading-none'
+            : 'rounded-md px-1.5 py-[2px] text-slate-800 dark:text-slate-100 border leading-none shadow-2xs'
         } ${
           isDragging ? 'opacity-40 scale-95 border-dashed border-blue-400' : ''
         }`}
       >
+        {/* For "none" style (no outline, no underbar), show a neat color dot indicator */}
+        {verticalEventStyle === 'none' && (
+          <span
+            className="w-2 h-2 rounded-full shrink-0 shadow-2xs"
+            style={{ backgroundColor: rawColor }}
+          />
+        )}
+
         {timeText && (
           <span
             style={customTextColor ? { color: customTextColor } : undefined}

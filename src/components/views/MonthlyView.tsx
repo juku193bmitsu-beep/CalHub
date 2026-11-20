@@ -48,7 +48,49 @@ const MonthGrid: React.FC<MonthGridProps> = React.memo(({
   onDragLeave,
   onDrop,
 }) => {
-  const { timedEventStyle, calendars } = useCalendar();
+  const { timedEventStyle, calendars, monthlyFontSize = 'large', monthlyFontWeight = 'bold' } = useCalendar();
+
+  const dayNumSizeClass =
+    monthlyFontSize === 'xlarge'
+      ? 'w-7 h-7 sm:w-8 sm:h-8 text-base sm:text-lg'
+      : monthlyFontSize === 'large'
+      ? 'w-6 h-6 sm:w-7 sm:h-7 text-sm sm:text-base'
+      : monthlyFontSize === 'normal'
+      ? 'w-5 h-5 sm:w-6 sm:h-6 text-xs sm:text-sm'
+      : 'w-4 h-4 sm:w-5 sm:h-5 text-[11px] sm:text-xs';
+
+  const dayNumWeightClass =
+    monthlyFontWeight === 'extrabold'
+      ? 'font-black'
+      : monthlyFontWeight === 'bold'
+      ? 'font-bold'
+      : 'font-semibold';
+
+  const holidaySizeClass =
+    monthlyFontSize === 'xlarge'
+      ? 'text-xs'
+      : monthlyFontSize === 'large'
+      ? 'text-[10px] sm:text-xs'
+      : monthlyFontSize === 'normal'
+      ? 'text-[9px] sm:text-[10px]'
+      : 'text-[8.5px] sm:text-[9px]';
+
+  const eventFontSizeClass =
+    monthlyFontSize === 'xlarge'
+      ? 'text-xs sm:text-sm md:text-base'
+      : monthlyFontSize === 'large'
+      ? 'text-[11px] sm:text-xs md:text-sm'
+      : monthlyFontSize === 'normal'
+      ? 'text-[10px] sm:text-[11px]'
+      : 'text-[9px] sm:text-[10px]';
+
+  const eventFontWeightClass =
+    monthlyFontWeight === 'extrabold'
+      ? 'font-extrabold'
+      : monthlyFontWeight === 'bold'
+      ? 'font-semibold'
+      : 'font-normal';
+
   const year = date.getFullYear();
   const month = date.getMonth();
 
@@ -202,13 +244,13 @@ const MonthGrid: React.FC<MonthGridProps> = React.memo(({
                     {/* Day Number & Holiday Header */}
                     <div className="flex items-center justify-between select-none pointer-events-none mb-0.5">
                       <span
-                        className={`w-6 h-6 sm:w-7 sm:h-7 flex items-center justify-center text-sm sm:text-base font-bold tabular-nums ${
+                        className={`${dayNumSizeClass} ${dayNumWeightClass} flex items-center justify-center tabular-nums ${
                           isCurrentToday
-                            ? 'bg-blue-600 text-white font-black rounded-md shadow-sm ring-1 ring-blue-400 dark:ring-blue-300'
+                            ? 'bg-blue-600 text-white rounded-md shadow-sm ring-1 ring-blue-400 dark:ring-blue-300'
                             : holiday || dayOfWeek === 0
-                            ? 'rounded-full text-rose-600 dark:text-rose-400 font-bold'
+                            ? 'rounded-full text-rose-600 dark:text-rose-400'
                             : dayOfWeek === 6
-                            ? 'rounded-full text-blue-600 dark:text-blue-400 font-bold'
+                            ? 'rounded-full text-blue-600 dark:text-blue-400'
                             : 'rounded-full text-slate-800 dark:text-slate-200'
                         }`}
                       >
@@ -217,7 +259,7 @@ const MonthGrid: React.FC<MonthGridProps> = React.memo(({
 
                       {holiday && (
                         <span
-                          className="text-[10px] sm:text-xs text-rose-600 dark:text-rose-400 font-bold truncate max-w-[64px] sm:max-w-[110px] leading-tight"
+                          className={`${holidaySizeClass} text-rose-600 dark:text-rose-400 font-bold truncate max-w-[64px] sm:max-w-[110px] leading-tight`}
                           title={holiday}
                         >
                           {holiday}
@@ -232,7 +274,7 @@ const MonthGrid: React.FC<MonthGridProps> = React.memo(({
                           e.stopPropagation();
                           onCellClick(cellDate);
                         }}
-                        className="text-[10px] sm:text-xs text-blue-600 dark:text-blue-400 font-bold hover:underline truncate cursor-pointer self-start px-1 py-0.5 rounded bg-blue-50/80 dark:bg-blue-950/60"
+                        className={`${holidaySizeClass} text-blue-600 dark:text-blue-400 font-bold hover:underline truncate cursor-pointer self-start px-1 py-0.5 rounded bg-blue-50/80 dark:bg-blue-950/60`}
                       >
                         + {hiddenCountOnDay} 件
                       </div>
@@ -286,7 +328,7 @@ const MonthGrid: React.FC<MonthGridProps> = React.memo(({
                         backgroundColor: rawColor,
                         ...(customTextColor ? { color: customTextColor } : {}),
                       }}
-                      className={`absolute pointer-events-auto flex items-center px-1.5 text-[11px] sm:text-xs md:text-sm font-semibold text-white shadow-2xs truncate cursor-grab active:cursor-grabbing hover:brightness-105 transition-all select-none ${
+                      className={`absolute pointer-events-auto flex items-center px-1.5 ${eventFontSizeClass} ${eventFontWeightClass} text-white shadow-2xs truncate cursor-grab active:cursor-grabbing hover:brightness-105 transition-all select-none ${
                         isStartsThisWeek ? 'rounded-l-md' : 'rounded-l-none'
                       } ${isEndsThisWeek ? 'rounded-r-md' : 'rounded-r-none'}`}
                       title={event.summary}
@@ -328,7 +370,7 @@ const MonthGrid: React.FC<MonthGridProps> = React.memo(({
                       borderBottom: isUnderbar ? `2.5px solid ${rawColor}` : undefined,
                       ...(customTextColor ? { color: customTextColor } : {}),
                     }}
-                    className={`absolute pointer-events-auto flex items-center px-1.5 text-[11px] sm:text-xs md:text-sm font-semibold text-slate-900 dark:text-slate-100 truncate cursor-grab active:cursor-grabbing hover:brightness-95 dark:hover:brightness-110 transition-all select-none ${
+                    className={`absolute pointer-events-auto flex items-center px-1.5 ${eventFontSizeClass} ${eventFontWeightClass} text-slate-900 dark:text-slate-100 truncate cursor-grab active:cursor-grabbing hover:brightness-95 dark:hover:brightness-110 transition-all select-none ${
                       isUnderbar ? 'rounded-none' : 'rounded-md border shadow-2xs'
                     }`}
                     title={event.summary}
@@ -353,7 +395,24 @@ export const MonthlyView: React.FC<MonthlyViewProps> = ({
   onNextMonth,
 }) => {
   const { filteredEvents, moveEventDate } = useEvents();
+  const { monthlyFontSize = 'large', monthlyFontWeight = 'bold' } = useCalendar();
   const [dragOverDateStr, setDragOverDateStr] = useState<string | null>(null);
+
+  const weekdaySizeClass =
+    monthlyFontSize === 'xlarge'
+      ? 'text-base sm:text-lg'
+      : monthlyFontSize === 'large'
+      ? 'text-sm sm:text-base'
+      : monthlyFontSize === 'normal'
+      ? 'text-xs sm:text-sm'
+      : 'text-[11px] sm:text-xs';
+
+  const weekdayWeightClass =
+    monthlyFontWeight === 'extrabold'
+      ? 'font-black'
+      : monthlyFontWeight === 'bold'
+      ? 'font-bold'
+      : 'font-medium';
 
   const containerRef = useRef<HTMLDivElement | null>(null);
   const [containerWidth, setContainerWidth] = useState<number>(() => {
@@ -548,7 +607,7 @@ export const MonthlyView: React.FC<MonthlyViewProps> = ({
         {weekdays.map((w, idx) => (
           <div
             key={w}
-            className={`text-sm sm:text-base font-bold select-none ${
+            className={`${weekdaySizeClass} ${weekdayWeightClass} select-none ${
               idx === 0
                 ? 'text-rose-600 dark:text-rose-400'
                 : idx === 6
