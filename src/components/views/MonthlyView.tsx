@@ -134,7 +134,11 @@ const MonthGrid: React.FC<MonthGridProps> = ({
                       !isCurrentMonth
                         ? 'opacity-35 bg-slate-50/50 dark:bg-slate-950/40'
                         : 'bg-white dark:bg-slate-900'
-                    } ${isCurrentToday ? 'bg-blue-50/70 dark:bg-blue-950/30 border-t-2 border-t-blue-600 dark:border-t-blue-400' : ''} ${
+                    } ${
+                      isCurrentToday
+                        ? 'bg-blue-50/80 dark:bg-blue-950/40 ring-2 ring-inset ring-blue-600 dark:ring-blue-500 rounded-sm z-10 shadow-xs'
+                        : ''
+                    } ${
                       isOverThisDay
                         ? 'bg-blue-100/90 dark:bg-blue-900/50 ring-2 ring-blue-500 z-10'
                         : ''
@@ -143,14 +147,14 @@ const MonthGrid: React.FC<MonthGridProps> = ({
                     {/* Day Number & Holiday Header */}
                     <div className="flex items-center justify-between select-none pointer-events-none mb-1">
                       <span
-                        className={`w-5 h-5 flex items-center justify-center rounded-full text-xs font-semibold tabular-nums ${
+                        className={`w-5 h-5 flex items-center justify-center text-xs tabular-nums ${
                           isCurrentToday
-                            ? 'bg-blue-600 text-white font-bold shadow-sm ring-2 ring-blue-300 dark:ring-blue-700'
+                            ? 'bg-blue-600 text-white font-extrabold rounded-[4px] shadow-sm ring-1 ring-blue-400 dark:ring-blue-300'
                             : holiday || dayOfWeek === 0
-                            ? 'text-rose-500'
+                            ? 'rounded-full font-semibold text-rose-500'
                             : dayOfWeek === 6
-                            ? 'text-blue-500'
-                            : 'text-slate-700 dark:text-slate-300'
+                            ? 'rounded-full font-semibold text-blue-500'
+                            : 'rounded-full font-semibold text-slate-700 dark:text-slate-300'
                         }`}
                       >
                         {dayNum}

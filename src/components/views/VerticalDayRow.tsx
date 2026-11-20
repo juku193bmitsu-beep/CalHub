@@ -141,6 +141,44 @@ export const VerticalDayRow: React.FC<VerticalDayRowProps> = ({
     onDateClick(date);
   };
 
+  // Granular date & weekday font sizes (7 steps)
+  const dateSizeClass =
+    verticalFontSize === 'huge'
+      ? 'text-[16px]'
+      : verticalFontSize === 'xlarge'
+      ? 'text-[15px]'
+      : verticalFontSize === 'large'
+      ? 'text-[14px]'
+      : verticalFontSize === 'medium'
+      ? 'text-[13px]'
+      : verticalFontSize === 'normal'
+      ? 'text-xs'
+      : verticalFontSize === 'small'
+      ? 'text-[11px]'
+      : 'text-[10px]';
+
+  const weekdaySizeClass =
+    verticalFontSize === 'huge'
+      ? 'text-[14px]'
+      : verticalFontSize === 'xlarge'
+      ? 'text-[13px]'
+      : verticalFontSize === 'large'
+      ? 'text-xs'
+      : verticalFontSize === 'medium'
+      ? 'text-[11.5px]'
+      : verticalFontSize === 'normal'
+      ? 'text-[11px]'
+      : verticalFontSize === 'small'
+      ? 'text-[10px]'
+      : 'text-[9px]';
+
+  const todayLabelSizeClass =
+    verticalFontSize === 'huge' || verticalFontSize === 'xlarge'
+      ? 'text-xs'
+      : verticalFontSize === 'large' || verticalFontSize === 'medium'
+      ? 'text-[11px]'
+      : 'text-[9.5px]';
+
   return (
     <div
       onClick={handleRowClick}
@@ -151,7 +189,7 @@ export const VerticalDayRow: React.FC<VerticalDayRowProps> = ({
       onDragLeave={handleDragLeave}
       onDrop={handleDrop}
       style={{ height: `${rowHeight}px` }}
-      className={`group relative flex items-center border-b border-slate-200/50 dark:border-slate-800/60 px-2 cursor-pointer transition-colors active:bg-blue-50/50 dark:active:bg-slate-800/50 hover:bg-slate-50/60 dark:hover:bg-slate-800/30 ${
+      className={`group relative flex items-end pb-[2px] border-b border-slate-200/50 dark:border-slate-800/60 px-2 cursor-pointer transition-colors active:bg-blue-50/50 dark:active:bg-slate-800/50 hover:bg-slate-50/60 dark:hover:bg-slate-800/30 ${
         isDragOver
           ? 'bg-blue-100/80 dark:bg-blue-900/50 border-blue-400 scale-[1.002] z-10 shadow-xs'
           : isToday
@@ -159,16 +197,10 @@ export const VerticalDayRow: React.FC<VerticalDayRowProps> = ({
           : ''
       }`}
     >
-      {/* Date Indicator (Left Column: fixed 58px width) */}
-      <div className="flex items-center gap-1 w-[58px] shrink-0 select-none">
+      {/* Date Indicator (Left Column: fixed 58px width, lowered close to underbar without touching) */}
+      <div className="flex items-center gap-1 w-[58px] shrink-0 select-none pb-[0.5px]">
         <span
-          className={`w-6 h-6 flex items-center justify-center rounded-full tabular-nums ${
-            verticalFontSize === 'xlarge'
-              ? 'text-[15px]'
-              : verticalFontSize === 'large'
-              ? 'text-[13.5px]'
-              : 'text-xs'
-          } ${
+          className={`w-6 h-6 flex items-center justify-center rounded-full tabular-nums leading-none ${dateSizeClass} ${
             verticalFontWeight === 'extrabold'
               ? 'font-black'
               : verticalFontWeight === 'bold'
@@ -184,21 +216,13 @@ export const VerticalDayRow: React.FC<VerticalDayRowProps> = ({
         </span>
         {isToday ? (
           <span
-            className={`font-bold text-blue-600 dark:text-blue-400 bg-blue-100/90 dark:bg-blue-900/60 px-1 py-0.2 rounded leading-none ${
-              verticalFontSize === 'xlarge' ? 'text-xs' : 'text-[10px]'
-            }`}
+            className={`font-bold text-blue-600 dark:text-blue-400 bg-blue-100/90 dark:bg-blue-900/60 px-1 py-0.2 rounded leading-none ${todayLabelSizeClass}`}
           >
             今日
           </span>
         ) : (
           <span
-            className={`${
-              verticalFontSize === 'xlarge'
-                ? 'text-[13px]'
-                : verticalFontSize === 'large'
-                ? 'text-xs'
-                : 'text-[11px]'
-            } ${
+            className={`leading-none ${weekdaySizeClass} ${
               verticalFontWeight === 'extrabold'
                 ? 'font-black'
                 : verticalFontWeight === 'bold'

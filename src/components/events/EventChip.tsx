@@ -127,18 +127,34 @@ export const EventChip: React.FC<EventChipProps> = ({
   const bgColorLight = hexToRgba(rawColor, 0.22);
   const borderColorLight = hexToRgba(rawColor, 0.55);
 
-  // Typography mapping for title & time based on settings
+  // Typography mapping for title & time based on 7 fine-grained settings
   const titleSizeClass = isCompact
-    ? verticalFontSize === 'xlarge'
-      ? 'text-[12px]'
+    ? verticalFontSize === 'huge'
+      ? 'text-[13.5px]'
+      : verticalFontSize === 'xlarge'
+      ? 'text-[12.5px]'
       : verticalFontSize === 'large'
+      ? 'text-[11.5px]'
+      : verticalFontSize === 'medium'
       ? 'text-[11px]'
-      : 'text-[9.5px]'
+      : verticalFontSize === 'normal'
+      ? 'text-[10px]'
+      : verticalFontSize === 'small'
+      ? 'text-[9.5px]'
+      : 'text-[9px]'
+    : verticalFontSize === 'huge'
+    ? 'text-[14px] sm:text-[15px]'
     : verticalFontSize === 'xlarge'
     ? 'text-[13px] sm:text-sm'
     : verticalFontSize === 'large'
-    ? 'text-[12px] sm:text-xs'
-    : 'text-[10.5px] sm:text-xs';
+    ? 'text-[12.5px] sm:text-[13.5px]'
+    : verticalFontSize === 'medium'
+    ? 'text-[12px] sm:text-[13px]'
+    : verticalFontSize === 'normal'
+    ? 'text-[11px] sm:text-xs'
+    : verticalFontSize === 'small'
+    ? 'text-[10px] sm:text-[11px]'
+    : 'text-[9.5px] sm:text-[10px]';
 
   const titleWeightClass =
     verticalFontWeight === 'extrabold'
@@ -148,11 +164,19 @@ export const EventChip: React.FC<EventChipProps> = ({
       : 'font-medium';
 
   const timeSizeClass =
-    verticalFontSize === 'xlarge'
-      ? 'text-[10.5px] sm:text-[11.5px]'
+    verticalFontSize === 'huge'
+      ? 'text-[11.5px] sm:text-[12.5px]'
+      : verticalFontSize === 'xlarge'
+      ? 'text-[11px] sm:text-[12px]'
       : verticalFontSize === 'large'
+      ? 'text-[10.5px] sm:text-[11.5px]'
+      : verticalFontSize === 'medium'
       ? 'text-[10px] sm:text-[11px]'
-      : 'text-[9px] sm:text-[10px]';
+      : verticalFontSize === 'normal'
+      ? 'text-[9.5px] sm:text-[10px]'
+      : verticalFontSize === 'small'
+      ? 'text-[9px] sm:text-[9.5px]'
+      : 'text-[8.5px] sm:text-[9px]';
 
   return (
     <div
@@ -191,11 +215,13 @@ export const EventChip: React.FC<EventChipProps> = ({
                 ...(customTextColor ? { color: customTextColor } : {}),
               }
         }
-        className={`w-full no-select cursor-grab active:cursor-grabbing transition-all select-none flex items-center gap-1 shadow-2xs border hover:shadow-xs overflow-hidden ${
+        className={`w-full no-select cursor-grab active:cursor-grabbing transition-all select-none flex ${
+          timedEventStyle === 'underbar' ? 'items-end' : 'items-center'
+        } gap-1 shadow-2xs border hover:shadow-xs overflow-hidden ${
           isAllDay
             ? 'rounded-lg px-1.5 sm:px-2 py-0.5 text-white shadow-xs'
             : timedEventStyle === 'underbar'
-            ? 'px-1 py-0.5 text-slate-800 dark:text-slate-100 shadow-none'
+            ? 'px-1 pt-0 pb-[1.5px] text-slate-800 dark:text-slate-100 shadow-none'
             : 'rounded-lg px-1.5 sm:px-2 py-0.5 text-slate-800 dark:text-slate-100'
         } ${isCompact ? 'h-[20px]' : 'h-[23px]'} ${
           isDragging ? 'opacity-40 scale-95 border-dashed border-blue-400' : ''

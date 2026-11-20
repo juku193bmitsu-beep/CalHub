@@ -158,10 +158,14 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
     { id: 'none', label: 'なし (直線)' },
   ];
 
-  const fontSizes: { id: VerticalFontSize; label: string }[] = [
-    { id: 'normal', label: '標準' },
-    { id: 'large', label: '大 (推奨)' },
-    { id: 'xlarge', label: '特大' },
+  const fontSizes: { id: VerticalFontSize; label: string; shortLabel: string }[] = [
+    { id: 'xsmall', label: '極小', shortLabel: '極小' },
+    { id: 'small', label: '小', shortLabel: '小' },
+    { id: 'normal', label: '標準', shortLabel: '標準' },
+    { id: 'medium', label: '中大', shortLabel: '中大' },
+    { id: 'large', label: '大 (推奨)', shortLabel: '大' },
+    { id: 'xlarge', label: '特大', shortLabel: '特大' },
+    { id: 'huge', label: '極大', shortLabel: '極大' },
   ];
 
   const fontWeights: { id: VerticalFontWeight; label: string }[] = [
@@ -723,11 +727,19 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                   <div className="flex items-center gap-1 shrink-0">
                     <span
                       className={`w-6 h-6 flex items-center justify-center rounded-full bg-blue-600 text-white tabular-nums ${
-                        verticalFontSize === 'xlarge'
+                        verticalFontSize === 'huge'
+                          ? 'text-[16px]'
+                          : verticalFontSize === 'xlarge'
                           ? 'text-[15px]'
                           : verticalFontSize === 'large'
-                          ? 'text-[13.5px]'
-                          : 'text-xs'
+                          ? 'text-[14px]'
+                          : verticalFontSize === 'medium'
+                          ? 'text-[13px]'
+                          : verticalFontSize === 'normal'
+                          ? 'text-xs'
+                          : verticalFontSize === 'small'
+                          ? 'text-[11px]'
+                          : 'text-[10px]'
                       } ${
                         verticalFontWeight === 'extrabold'
                           ? 'font-black'
@@ -740,11 +752,19 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                     </span>
                     <span
                       className={`${
-                        verticalFontSize === 'xlarge'
+                        verticalFontSize === 'huge'
+                          ? 'text-[14px]'
+                          : verticalFontSize === 'xlarge'
                           ? 'text-[13px]'
                           : verticalFontSize === 'large'
                           ? 'text-xs'
-                          : 'text-[11px]'
+                          : verticalFontSize === 'medium'
+                          ? 'text-[11.5px]'
+                          : verticalFontSize === 'normal'
+                          ? 'text-[11px]'
+                          : verticalFontSize === 'small'
+                          ? 'text-[10px]'
+                          : 'text-[9px]'
                       } ${
                         verticalFontWeight === 'extrabold'
                           ? 'font-black'
@@ -763,22 +783,38 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                     >
                       <span
                         className={`${
-                          verticalFontSize === 'xlarge'
-                            ? 'text-[10.5px]'
+                          verticalFontSize === 'huge'
+                            ? 'text-[11.5px]'
+                            : verticalFontSize === 'xlarge'
+                            ? 'text-[11px]'
                             : verticalFontSize === 'large'
+                            ? 'text-[10.5px]'
+                            : verticalFontSize === 'medium'
                             ? 'text-[10px]'
-                            : 'text-[9px]'
+                            : verticalFontSize === 'normal'
+                            ? 'text-[9.5px]'
+                            : verticalFontSize === 'small'
+                            ? 'text-[9px]'
+                            : 'text-[8.5px]'
                         } opacity-80 font-normal tabular-nums shrink-0 text-slate-700 dark:text-slate-200`}
                       >
                         10:00
                       </span>
                       <span
                         className={`truncate leading-tight tracking-tight flex-1 ${
-                          verticalFontSize === 'xlarge'
+                          verticalFontSize === 'huge'
+                            ? 'text-[14px]'
+                            : verticalFontSize === 'xlarge'
                             ? 'text-[13px]'
                             : verticalFontSize === 'large'
+                            ? 'text-[12.5px]'
+                            : verticalFontSize === 'medium'
                             ? 'text-[12px]'
-                            : 'text-[10.5px]'
+                            : verticalFontSize === 'normal'
+                            ? 'text-[11px]'
+                            : verticalFontSize === 'small'
+                            ? 'text-[10px]'
+                            : 'text-[9.5px]'
                         } ${
                           verticalFontWeight === 'extrabold'
                             ? 'font-extrabold'
@@ -793,24 +829,71 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                   </div>
                 </div>
 
-                {/* Font Size Selector */}
+                {/* Font Size Selector (7-step Granular Selection) */}
                 <div>
-                  <div className="text-[11px] font-semibold text-slate-600 dark:text-slate-400 mb-1.5">
-                    文字の大きさ
+                  <div className="flex items-center justify-between text-[11px] font-semibold text-slate-600 dark:text-slate-400 mb-1.5">
+                    <span>文字の大きさ（全7段階）</span>
+                    <span className="text-blue-600 dark:text-blue-400 font-bold">
+                      {fontSizes.find((f) => f.id === verticalFontSize)?.label || '大'} (
+                      {Math.max(1, fontSizes.findIndex((f) => f.id === verticalFontSize) + 1)}/7)
+                    </span>
                   </div>
-                  <div className="grid grid-cols-3 gap-1.5 bg-slate-200/60 dark:bg-slate-700/60 p-1 rounded-xl">
+
+                  {/* Stepper & Slider */}
+                  <div className="flex items-center gap-2 mb-2">
+                    <button
+                      type="button"
+                      disabled={fontSizes.findIndex((f) => f.id === verticalFontSize) <= 0}
+                      onClick={() => {
+                        const idx = Math.max(0, fontSizes.findIndex((f) => f.id === verticalFontSize) - 1);
+                        setVerticalFontSize(fontSizes[idx].id);
+                      }}
+                      className="px-2.5 py-1 rounded-lg bg-slate-200/80 dark:bg-slate-700/80 text-slate-700 dark:text-slate-200 hover:bg-slate-300 dark:hover:bg-slate-600 disabled:opacity-30 text-xs font-bold transition active:scale-95 cursor-pointer"
+                      title="小さくする"
+                    >
+                      －
+                    </button>
+                    <input
+                      type="range"
+                      min={0}
+                      max={fontSizes.length - 1}
+                      step={1}
+                      value={Math.max(0, fontSizes.findIndex((f) => f.id === verticalFontSize))}
+                      onChange={(e) => setVerticalFontSize(fontSizes[Number(e.target.value)].id)}
+                      className="flex-1 accent-blue-600 cursor-pointer h-2 bg-slate-200 dark:bg-slate-700 rounded-lg"
+                    />
+                    <button
+                      type="button"
+                      disabled={fontSizes.findIndex((f) => f.id === verticalFontSize) >= fontSizes.length - 1}
+                      onClick={() => {
+                        const idx = Math.min(
+                          fontSizes.length - 1,
+                          Math.max(0, fontSizes.findIndex((f) => f.id === verticalFontSize) + 1)
+                        );
+                        setVerticalFontSize(fontSizes[idx].id);
+                      }}
+                      className="px-2.5 py-1 rounded-lg bg-slate-200/80 dark:bg-slate-700/80 text-slate-700 dark:text-slate-200 hover:bg-slate-300 dark:hover:bg-slate-600 disabled:opacity-30 text-xs font-bold transition active:scale-95 cursor-pointer"
+                      title="大きくする"
+                    >
+                      ＋
+                    </button>
+                  </div>
+
+                  {/* 7-Step Segmented Pills */}
+                  <div className="grid grid-cols-7 gap-1 bg-slate-200/60 dark:bg-slate-700/60 p-1 rounded-xl">
                     {fontSizes.map((item) => (
                       <button
                         key={item.id}
                         type="button"
                         onClick={() => setVerticalFontSize(item.id)}
-                        className={`py-1.5 px-2 rounded-lg text-xs font-semibold transition active:scale-95 ${
+                        className={`py-1 rounded-md text-[10px] font-semibold transition active:scale-95 text-center ${
                           verticalFontSize === item.id
-                            ? 'bg-white dark:bg-slate-800 text-blue-600 dark:text-blue-400 shadow-xs'
+                            ? 'bg-white dark:bg-slate-800 text-blue-600 dark:text-blue-400 shadow-xs font-bold'
                             : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-100'
                         }`}
+                        title={item.label}
                       >
-                        {item.label}
+                        {item.shortLabel}
                       </button>
                     ))}
                   </div>
