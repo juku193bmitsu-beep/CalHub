@@ -225,9 +225,9 @@ const MonthGrid: React.FC<MonthGridProps> = ({
                         top: `${topPx}px`,
                         height: '19px',
                         backgroundColor: rawColor,
-                        color: customTextColor || '#ffffff',
+                        ...(customTextColor ? { color: customTextColor } : {}),
                       }}
-                      className={`absolute pointer-events-auto flex items-center px-1.5 text-[10px] font-medium shadow-2xs truncate cursor-grab active:cursor-grabbing hover:brightness-105 transition-all select-none ${
+                      className={`absolute pointer-events-auto flex items-center px-1.5 text-[10px] font-medium text-white shadow-2xs truncate cursor-grab active:cursor-grabbing hover:brightness-105 transition-all select-none ${
                         isStartsThisWeek ? 'rounded-l-md' : 'rounded-l-none'
                       } ${isEndsThisWeek ? 'rounded-r-md' : 'rounded-r-none'}`}
                       title={event.summary}
@@ -269,9 +269,9 @@ const MonthGrid: React.FC<MonthGridProps> = ({
                       borderBottom: isUnderbar ? `2.5px solid ${rawColor}` : undefined,
                       ...(customTextColor ? { color: customTextColor } : {}),
                     }}
-                    className={`absolute pointer-events-auto flex items-center px-1 text-[10px] font-medium truncate cursor-grab active:cursor-grabbing hover:brightness-95 dark:hover:brightness-110 transition-all select-none ${
-                      !customTextColor ? 'text-slate-800 dark:text-slate-100' : ''
-                    } ${isUnderbar ? 'rounded-none' : 'rounded-md border shadow-2xs'}`}
+                    className={`absolute pointer-events-auto flex items-center px-1 text-[10px] font-medium text-slate-800 dark:text-slate-100 truncate cursor-grab active:cursor-grabbing hover:brightness-95 dark:hover:brightness-110 transition-all select-none ${
+                      isUnderbar ? 'rounded-none' : 'rounded-md border shadow-2xs'
+                    }`}
                     title={event.summary}
                   >
                     <span className="truncate">{event.summary || '(予定なし)'}</span>

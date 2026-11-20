@@ -37,7 +37,7 @@ interface CalendarContextType {
   setAuthToken: (token: string | null) => void;
   isSyncing: boolean;
   refreshCalendars: () => Promise<void>;
-  updateCalendarColor: (id: string, colors: { backgroundColor?: string; foregroundColor?: string }) => void;
+  updateCalendarColor: (id: string, colors: { backgroundColor?: string; customTextColor?: string }) => void;
 }
 
 const CalendarContext = createContext<CalendarContextType | null>(null);
@@ -280,14 +280,14 @@ export const CalendarProvider: React.FC<{ children: React.ReactNode }> = ({ chil
   };
 
   const updateCalendarColor = useCallback(
-    (id: string, colors: { backgroundColor?: string; foregroundColor?: string }) => {
+    (id: string, colors: { backgroundColor?: string; customTextColor?: string }) => {
       setCalendars((prev) => {
         const next = prev.map((cal) => {
           if (cal.id === id) {
             return {
               ...cal,
-              ...(colors.backgroundColor ? { backgroundColor: colors.backgroundColor } : {}),
-              ...(colors.foregroundColor ? { foregroundColor: colors.foregroundColor } : {}),
+              ...(colors.backgroundColor !== undefined ? { backgroundColor: colors.backgroundColor } : {}),
+              ...(colors.customTextColor !== undefined ? { customTextColor: colors.customTextColor } : {}),
             };
           }
           return cal;

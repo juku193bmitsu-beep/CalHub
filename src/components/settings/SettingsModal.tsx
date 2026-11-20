@@ -362,14 +362,14 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                             </label>
                             <div className="flex flex-wrap items-center gap-1.5">
                               {TEXT_COLOR_PRESETS.map((p) => {
-                                const isFgSel = (cal.foregroundColor || 'auto') === p.value;
+                                const isFgSel = (cal.customTextColor || 'auto') === p.value;
                                 if (p.value === 'auto') {
                                   return (
                                     <button
                                       key="auto"
                                       type="button"
                                       onClick={() =>
-                                        updateCalendarColor(cal.id, { foregroundColor: 'auto' })
+                                        updateCalendarColor(cal.id, { customTextColor: 'auto' })
                                       }
                                       className={`px-2 py-0.5 rounded-lg text-[10px] font-semibold border ${
                                         isFgSel
@@ -386,7 +386,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                                     key={p.value}
                                     type="button"
                                     onClick={() =>
-                                      updateCalendarColor(cal.id, { foregroundColor: p.value })
+                                      updateCalendarColor(cal.id, { customTextColor: p.value })
                                     }
                                     title={p.label}
                                     className={`w-5 h-5 rounded-full border transition active:scale-95 ${
@@ -408,12 +408,12 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                                 <input
                                   type="color"
                                   value={
-                                    cal.foregroundColor && cal.foregroundColor !== 'auto'
-                                      ? cal.foregroundColor
+                                    cal.customTextColor && cal.customTextColor !== 'auto'
+                                      ? cal.customTextColor
                                       : '#000000'
                                   }
                                   onChange={(e) =>
-                                    updateCalendarColor(cal.id, { foregroundColor: e.target.value })
+                                    updateCalendarColor(cal.id, { customTextColor: e.target.value })
                                   }
                                   className="opacity-0 absolute inset-0 cursor-pointer w-full h-full"
                                 />

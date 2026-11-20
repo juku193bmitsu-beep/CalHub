@@ -4,6 +4,7 @@ export interface GoogleCalendar {
   description?: string;
   backgroundColor: string;
   foregroundColor: string;
+  customTextColor?: string;
   primary?: boolean;
   selected?: boolean;
   accessRole?: 'reader' | 'writer' | 'owner';

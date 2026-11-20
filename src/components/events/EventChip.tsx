@@ -173,7 +173,7 @@ export const EventChip: React.FC<EventChipProps> = ({
             ? {
                 backgroundColor: rawColor,
                 borderColor: 'transparent',
-                color: customTextColor || '#ffffff',
+                ...(customTextColor ? { color: customTextColor } : { color: '#ffffff' }),
               }
             : timedEventStyle === 'underbar'
             ? {
@@ -193,13 +193,13 @@ export const EventChip: React.FC<EventChipProps> = ({
         }
         className={`w-full no-select cursor-grab active:cursor-grabbing transition-all select-none flex items-center gap-1 shadow-2xs border hover:shadow-xs overflow-hidden ${
           isAllDay
-            ? 'rounded-lg px-1.5 sm:px-2 py-0.5 shadow-xs'
+            ? 'rounded-lg px-1.5 sm:px-2 py-0.5 text-white shadow-xs'
             : timedEventStyle === 'underbar'
-            ? 'px-1 py-0.5 shadow-none'
-            : 'rounded-lg px-1.5 sm:px-2 py-0.5'
-        } ${!customTextColor && !isAllDay ? 'text-slate-800 dark:text-slate-100' : ''} ${
-          isCompact ? 'h-[20px]' : 'h-[23px]'
-        } ${isDragging ? 'opacity-40 scale-95 border-dashed border-blue-400' : ''}`}
+            ? 'px-1 py-0.5 text-slate-800 dark:text-slate-100 shadow-none'
+            : 'rounded-lg px-1.5 sm:px-2 py-0.5 text-slate-800 dark:text-slate-100'
+        } ${isCompact ? 'h-[20px]' : 'h-[23px]'} ${
+          isDragging ? 'opacity-40 scale-95 border-dashed border-blue-400' : ''
+        }`}
       >
         {timeText && (
           <span

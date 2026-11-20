@@ -290,9 +290,9 @@ export const WeeklyTimeGridView: React.FC<WeeklyTimeGridViewProps> = ({
                         top: `${topPx}px`,
                         height: '21px',
                         backgroundColor: rawBg,
-                        color: customTextColor || '#ffffff',
+                        ...(customTextColor ? { color: customTextColor } : {}),
                       }}
-                      className={`absolute pointer-events-auto flex items-center px-1.5 text-[11px] font-medium shadow-2xs truncate cursor-grab active:cursor-grabbing hover:brightness-105 transition-all select-none ${
+                      className={`absolute pointer-events-auto flex items-center px-1.5 text-[11px] font-medium text-white shadow-2xs truncate cursor-grab active:cursor-grabbing hover:brightness-105 transition-all select-none ${
                         isStartsThisWeek ? 'rounded-l-md' : 'rounded-l-none'
                       } ${isEndsThisWeek ? 'rounded-r-md' : 'rounded-r-none'}`}
                       title={event.summary}

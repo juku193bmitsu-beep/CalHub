@@ -82,35 +82,29 @@ export function getAutoTextColor(bgHex: string): string {
 }
 
 /**
- * Resolves the final text color and styling for an event
- * Priority order:
- * 1. Event custom foregroundColor (if defined and not 'auto')
- * 2. Calendar category custom foregroundColor (if defined and not 'auto')
- * 3. Auto high contrast based on background, or theme default
+ * Resolves the custom text color for an event.
+ * IMPORTANT:
+ * - Existing events with no custom color MUST return an empty string ('')
+ *   so that the original default styles (all-day: white, timed: dark slate/dark mode white)
+ *   are 100% preserved without any visual regressions!
+ * - Never use calendar.foregroundColor as it defaults to '#ffffff' from Google API metadata.
  */
 export function resolveEventTextColor(
   event: CalendarEvent,
   calendar?: GoogleCalendar,
-  isAllDay: boolean = false,
-  rawBgColor?: string
+  _isAllDay: boolean = false,
+  _rawBgColor?: string
 ): string {
-  // 1. Explicit event custom foregroundColor
+  // 1. Explicit event custom foregroundColor chosen by user
   if (event.foregroundColor && event.foregroundColor !== 'auto') {
     return event.foregroundColor;
   }
 
-  // 2. Calendar custom foregroundColor
-  if (calendar?.foregroundColor && calendar.foregroundColor !== 'auto') {
-    return calendar.foregroundColor;
+  // 2. Explicit custom category text color chosen by user
+  if (calendar?.customTextColor && calendar.customTextColor !== 'auto') {
+    return calendar.customTextColor;
   }
 
-  // 3. Fallback based on event mode
-  const bg = rawBgColor || event.backgroundColor || calendar?.backgroundColor || '#039be5';
-  if (isAllDay) {
-    return getAutoTextColor(bg);
-  }
-
-  // For timed badge/underbar, return empty/undefined to let CSS dark/light theme apply,
-  // or return dark slate if contrast is needed
+  // 3. Default: return empty string so default theme CSS styles apply untouched!
   return '';
 }
