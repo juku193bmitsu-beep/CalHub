@@ -124,7 +124,8 @@ export class CalendarApiService {
       const colorId = item.colorId;
       const palette = colorId ? GOOGLE_EVENT_COLORS[colorId] : undefined;
       const bg = palette?.background || calendarColor || undefined;
-      const fg = palette?.foreground || (bg ? '#ffffff' : undefined);
+      const isAllDayItem = !item.start?.dateTime && !!item.start?.date;
+      const fg = palette?.foreground || (isAllDayItem ? '#ffffff' : undefined);
 
       return {
         id: item.id,

@@ -27,6 +27,7 @@ export interface CalendarEvent {
   colorId?: string;
   backgroundColor?: string;
   foregroundColor?: string;
+  customTextColor?: string;
   isAllDay?: boolean;
   status?: 'confirmed' | 'tentative' | 'cancelled';
   recurringEventId?: string;

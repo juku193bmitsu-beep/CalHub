@@ -128,7 +128,9 @@ export const EventDetailModal: React.FC<EventDetailModalProps> = ({
     setFormDescription(ev.description || '');
     setFormCalendarId(ev.calendarId);
     setFormIsAllDay(!!ev.isAllDay || !!ev.start.date);
-    setFormForegroundColor(ev.foregroundColor || 'auto');
+    setFormForegroundColor(
+      ev.customTextColor || (ev.foregroundColor && ev.foregroundColor !== '#ffffff' ? ev.foregroundColor : 'auto')
+    );
     setFormBackgroundColor(ev.backgroundColor || '');
 
     const sDateStr = getEventStartDateStr(ev) || formatLocalDate(currentDate);
@@ -298,6 +300,7 @@ export const EventDetailModal: React.FC<EventDetailModalProps> = ({
         end: endObj,
         backgroundColor: finalBgCol,
         foregroundColor: customFg,
+        customTextColor: customFg,
       });
     } else if (editingEvent) {
       updateEvent(editingEvent.id, {
@@ -310,6 +313,7 @@ export const EventDetailModal: React.FC<EventDetailModalProps> = ({
         end: endObj,
         backgroundColor: finalBgCol,
         foregroundColor: customFg,
+        customTextColor: customFg,
       });
     }
 

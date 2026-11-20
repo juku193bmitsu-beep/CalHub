@@ -82,21 +82,28 @@ export function getAutoTextColor(bgHex: string): string {
 }
 
 /**
- * Resolves the custom text color for an event.
- * IMPORTANT:
- * - Existing events with no custom color MUST return an empty string ('')
- *   so that the original default styles (all-day: white, timed: dark slate/dark mode white)
- *   are 100% preserved without any visual regressions!
- * - Never use calendar.foregroundColor as it defaults to '#ffffff' from Google API metadata.
+ * Resolves the final text color for an event:
+ * - Base Rule 1: All-day events default to WHITE (#ffffff).
+ * - Base Rule 2: Timed events default to BLACK / dark slate (returns empty string so text-slate-800 applies).
+ * - Exception: If the user explicitly customized the text color (e.g. red, yellow, blue), apply that color!
+ * - Note: Ignore default '#ffffff' from Google API metadata on timed events so they never become white-on-white.
  */
 export function resolveEventTextColor(
   event: CalendarEvent,
   calendar?: GoogleCalendar,
-  _isAllDay: boolean = false,
+  isAllDay: boolean = false,
   _rawBgColor?: string
 ): string {
-  // 1. Explicit event custom foregroundColor chosen by user
-  if (event.foregroundColor && event.foregroundColor !== 'auto') {
+  // 1. Explicit custom text color chosen by user for this event
+  if (event.customTextColor && event.customTextColor !== 'auto') {
+    return event.customTextColor;
+  }
+  // Check custom foregroundColor if not default Google metadata '#ffffff'
+  if (
+    event.foregroundColor &&
+    event.foregroundColor !== 'auto' &&
+    event.foregroundColor !== '#ffffff'
+  ) {
     return event.foregroundColor;
   }
 
@@ -105,6 +112,12 @@ export function resolveEventTextColor(
     return calendar.customTextColor;
   }
 
-  // 3. Default: return empty string so default theme CSS styles apply untouched!
+  // 3. Base defaults:
+  // - All-day events: ALWAYS WHITE (#ffffff)
+  if (isAllDay) {
+    return '#ffffff';
+  }
+
+  // - Timed events: ALWAYS BLACK (empty string to use text-slate-800 dark:text-slate-100)
   return '';
 }
