@@ -234,7 +234,6 @@ export const CalHubApp: React.FC = () => {
         onOpenSearch={() => setIsSearchOpen(true)}
         onOpenArrowSettings={() => setIsArrowSettingsOpen(true)}
         onOpenYearMonthPicker={() => setIsYearMonthPickerOpen(true)}
-        isFetchingMonth={isFetchingMonth}
       />
 
       {/* Sync Status Toast / Indicator (Foreground & Background sync) */}
