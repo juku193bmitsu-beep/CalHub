@@ -186,10 +186,19 @@ export const VerticalDayRow: React.FC<VerticalDayRowProps> = ({
         isDragOver
           ? 'bg-blue-100/80 dark:bg-blue-900/50 border-blue-400 scale-[1.002] z-10 shadow-xs'
           : isToday
-          ? 'bg-blue-50/90 dark:bg-blue-950/40 border-l-[3.5px] border-l-blue-600 dark:border-l-blue-400 pl-[calc(0.5rem-3.5px)] font-medium border-y border-y-blue-200/70 dark:border-y-blue-800/70'
+          ? 'bg-gradient-to-r from-blue-100/80 via-blue-50/35 to-transparent dark:from-blue-950/70 dark:via-blue-950/30 dark:to-transparent border-l-[3.5px] border-l-blue-600 dark:border-l-blue-400 pl-[calc(0.5rem-3.5px)] font-medium'
           : ''
       }`}
     >
+      {/* Today Pointer Indicator: points directly at today's row from the left edge without shifting numbers */}
+      {isToday && (
+        <span
+          className="absolute left-0.5 top-1/2 -translate-y-1/2 text-blue-600 dark:text-blue-400 text-[8px] sm:text-[9px] font-black leading-none pointer-events-none select-none z-10"
+          aria-hidden="true"
+        >
+          ▶
+        </span>
+      )}
       {/* Date Indicator (Left Column: seated directly on the baseline above the underline, no shift or overlap) */}
       <div className="flex items-baseline gap-1 w-[52px] sm:w-[58px] shrink-0 select-none pb-[1px]">
         <span
