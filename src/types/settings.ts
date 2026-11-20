@@ -24,7 +24,6 @@ export interface UserPreferences {
   visibleCalendarIds: string[];
   theme: 'light' | 'dark' | 'system';
   timedEventStyle?: TimedEventStyle;
-  showZoomControls?: boolean;
   verticalFontSize?: VerticalFontSize;
   verticalFontWeight?: VerticalFontWeight;
 }

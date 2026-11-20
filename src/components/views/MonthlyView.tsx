@@ -4,7 +4,13 @@ import { useCalendar } from '../../contexts/CalendarContext';
 import { CalendarEvent } from '../../types/calendar';
 import { getJapaneseHoliday } from '../../constants/holidays';
 import { isClickSuppressed, suppressNextClicks, triggerHaptic } from '../../services/gestureUtils';
-import { formatLocalDate, isEventOnDate } from '../../services/dateUtils';
+import {
+  formatLocalDate,
+  isEventOnDate,
+  getEventStartDateStr,
+  getEventEndDateInclusiveStr,
+  addMonthsSafe,
+} from '../../services/dateUtils';
 import { computeWeekLayout, hexToRgba } from '../../services/calendarLayout';
 import { resolveEventTextColor } from '../../services/colorUtils';
 
@@ -30,9 +36,9 @@ interface MonthGridProps {
 }
 
 /**
- * Renders the 5-6 week calendar grid for a specific month.
+ * Renders the 5-6 week calendar grid for a specific month (memoized for zero-lag carousel dragging).
  */
-const MonthGrid: React.FC<MonthGridProps> = ({
+const MonthGrid: React.FC<MonthGridProps> = React.memo(({
   date,
   filteredEvents,
   onCellClick,
@@ -78,6 +84,18 @@ const MonthGrid: React.FC<MonthGridProps> = ({
     return list;
   }, [year, month, firstDayOfWeek, daysInMonth]);
 
+  // Pre-filter events to only those overlapping this month grid's visible days
+  const gridEvents = useMemo(() => {
+    if (days.length === 0) return [];
+    const startStr = formatLocalDate(days[0].date);
+    const endStr = formatLocalDate(days[days.length - 1].date);
+    return filteredEvents.filter((ev) => {
+      const evStart = getEventStartDateStr(ev);
+      const evEnd = getEventEndDateInclusiveStr(ev) || evStart;
+      return Boolean(evStart && evStart <= endStr && evEnd >= startStr);
+    });
+  }, [filteredEvents, days]);
+
   const weeks = useMemo(() => {
     const rows: { date: Date; isCurrentMonth: boolean }[][] = [];
     for (let i = 0; i < days.length; i += 7) {
@@ -96,7 +114,7 @@ const MonthGrid: React.FC<MonthGridProps> = ({
     <div className="h-full w-full flex flex-col divide-y divide-slate-200/70 dark:divide-slate-800/80 overflow-hidden bg-white dark:bg-slate-900 select-none">
       {weeks.map((week, weekIdx) => {
         const weekDates = week.map((w) => w.date);
-        const weekLayout = computeWeekLayout(filteredEvents, weekDates);
+        const weekLayout = computeWeekLayout(gridEvents, weekDates);
 
         return (
           <div
@@ -114,7 +132,7 @@ const MonthGrid: React.FC<MonthGridProps> = ({
                 const isCurrentToday = isToday(cellDate);
                 const isOverThisDay = dragOverDateStr === dateStr;
 
-                const dayEvents = filteredEvents.filter((ev) => isEventOnDate(ev, dateStr));
+                const dayEvents = gridEvents.filter((ev) => isEventOnDate(ev, dateStr));
                 const visibleCountOnDay = weekLayout.segments.filter(
                   (seg) =>
                     seg.startCol <= colIdx &&
@@ -288,7 +306,7 @@ const MonthGrid: React.FC<MonthGridProps> = ({
       })}
     </div>
   );
-};
+});
 
 export const MonthlyView: React.FC<MonthlyViewProps> = ({
   currentDate,
@@ -318,19 +336,8 @@ export const MonthlyView: React.FC<MonthlyViewProps> = ({
   }, []);
 
   // Compute Adjacent Months for Continuous Carousel
-  const prevMonthDate = useMemo(() => {
-    const d = new Date(currentDate);
-    d.setDate(1);
-    d.setMonth(d.getMonth() - 1);
-    return d;
-  }, [currentDate]);
-
-  const nextMonthDate = useMemo(() => {
-    const d = new Date(currentDate);
-    d.setDate(1);
-    d.setMonth(d.getMonth() + 1);
-    return d;
-  }, [currentDate]);
+  const prevMonthDate = useMemo(() => addMonthsSafe(currentDate, -1), [currentDate]);
+  const nextMonthDate = useMemo(() => addMonthsSafe(currentDate, 1), [currentDate]);
 
   // Touch gesture & continuous drag tracking
   const [dragOffset, setDragOffset] = useState<number>(0);
@@ -468,26 +475,27 @@ export const MonthlyView: React.FC<MonthlyViewProps> = ({
 
   const weekdays = ['日', '月', '火', '水', '木', '金', '土'];
 
-  const handleDragOver = (e: React.DragEvent, dateStr: string) => {
+  const handleDragOver = useCallback((e: React.DragEvent, dateStr: string) => {
     e.preventDefault();
     e.dataTransfer.dropEffect = 'move';
-    if (dragOverDateStr !== dateStr) {
-      setDragOverDateStr(dateStr);
-    }
-  };
+    setDragOverDateStr((prev) => (prev !== dateStr ? dateStr : prev));
+  }, []);
 
-  const handleDragLeave = () => {
+  const handleDragLeave = useCallback(() => {
     setDragOverDateStr(null);
-  };
+  }, []);
 
-  const handleDrop = (e: React.DragEvent, targetDateStr: string) => {
-    e.preventDefault();
-    setDragOverDateStr(null);
-    const eventId = e.dataTransfer.getData('text/plain');
-    if (eventId) {
-      moveEventDate(eventId, targetDateStr);
-    }
-  };
+  const handleDrop = useCallback(
+    (e: React.DragEvent, targetDateStr: string) => {
+      e.preventDefault();
+      setDragOverDateStr(null);
+      const eventId = e.dataTransfer.getData('text/plain');
+      if (eventId) {
+        moveEventDate(eventId, targetDateStr);
+      }
+    },
+    [moveEventDate]
+  );
 
   return (
     <div

@@ -173,6 +173,10 @@ export const EventProvider: React.FC<{ children: React.ReactNode }> = ({ childre
               allFetched.push(...calEvents);
             }
           } catch (err: any) {
+            if (err?.status === 401 || err?.isAuthError) {
+              setAuthToken(null);
+              return 0;
+            }
             console.warn(`[fetchEventsForMonth] Failed for cal ${cal.id} in ${monthKey}:`, err);
           }
         }
@@ -183,8 +187,12 @@ export const EventProvider: React.FC<{ children: React.ReactNode }> = ({ childre
             prev.forEach((ev) => map.set(ev.id, ev));
             let added = 0;
             allFetched.forEach((ev) => {
-              if (!map.has(ev.id)) added++;
-              map.set(ev.id, ev);
+              const existing = map.get(ev.id);
+              if (!existing) added++;
+              map.set(ev.id, {
+                ...ev,
+                ...(existing?.customTextColor ? { customTextColor: existing.customTextColor } : {}),
+              });
             });
             newEventsCount = added;
             const merged = Array.from(map.values());
@@ -202,7 +210,7 @@ export const EventProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         setIsFetchingMonth(false);
       }
     },
-    [authToken, visibleCalendarIds, calendars]
+    [authToken, visibleCalendarIds, calendars, setAuthToken]
   );
 
   // Sync events from Google Calendar API in sequential polite slices
@@ -290,7 +298,13 @@ export const EventProvider: React.FC<{ children: React.ReactNode }> = ({ childre
               setEvents((prev) => {
                 const map = new Map<string, CalendarEvent>();
                 prev.forEach((ev) => map.set(ev.id, ev));
-                calEvents.forEach((ev) => map.set(ev.id, ev));
+                calEvents.forEach((ev) => {
+                  const existing = map.get(ev.id);
+                  map.set(ev.id, {
+                    ...ev,
+                    ...(existing?.customTextColor ? { customTextColor: existing.customTextColor } : {}),
+                  });
+                });
                 const merged = Array.from(map.values());
                 saveEventsToDb(merged);
                 return merged;

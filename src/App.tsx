@@ -34,15 +34,10 @@ export const CalHubApp: React.FC = () => {
   const [currentDate, setCurrentDate] = useState<Date>(new Date());
   const [pasteToast, setPasteToast] = useState<string | null>(null);
 
-  // Fetch events for target month with debouncing (350ms) to prevent excessive API calls during fast swiping
+  // Fetch events for target 3-month window with debouncing (350ms) to prevent excessive API calls during fast swiping
   useEffect(() => {
     const timer = setTimeout(() => {
       fetchEventsForMonth(currentDate.getFullYear(), currentDate.getMonth() + 1);
-      // Pre-fetch adjacent months for seamless continuous carousel transitions
-      const prev = addMonthsSafe(currentDate, -1);
-      const next = addMonthsSafe(currentDate, 1);
-      fetchEventsForMonth(prev.getFullYear(), prev.getMonth() + 1);
-      fetchEventsForMonth(next.getFullYear(), next.getMonth() + 1);
     }, 350);
     return () => clearTimeout(timer);
   }, [currentDate, fetchEventsForMonth]);
@@ -178,8 +173,8 @@ export const CalHubApp: React.FC = () => {
       <main className="flex-1 flex overflow-hidden relative pt-safe">
         <div
           key={
-            viewType === 'vertical'
-              ? 'vertical'
+            viewType === 'vertical' || viewType === 'month'
+              ? viewType
               : `${viewType}-${currentDate.getFullYear()}-${currentDate.getMonth()}-${
                   viewType === 'week' ? currentDate.getDate() : ''
                 }`

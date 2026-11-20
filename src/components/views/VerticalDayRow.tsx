@@ -23,7 +23,7 @@ interface VerticalDayRowProps {
   onEventClick: (event: CalendarEvent) => void;
 }
 
-export const VerticalDayRow: React.FC<VerticalDayRowProps> = ({
+export const VerticalDayRow: React.FC<VerticalDayRowProps> = React.memo(({
   date,
   events,
   rowHeight,
@@ -190,15 +190,6 @@ export const VerticalDayRow: React.FC<VerticalDayRowProps> = ({
           : ''
       }`}
     >
-      {/* Today Pointer Indicator: points directly at today's row from the left edge without shifting numbers */}
-      {isToday && (
-        <span
-          className="absolute left-0.5 top-1/2 -translate-y-1/2 text-blue-600 dark:text-blue-400 text-[8px] sm:text-[9px] font-black leading-none pointer-events-none select-none z-10"
-          aria-hidden="true"
-        >
-          ▶
-        </span>
-      )}
       {/* Date Indicator (Left Column: seated directly on the baseline above the underline, no shift or overlap) */}
       <div className="flex items-baseline gap-1 w-[52px] sm:w-[58px] shrink-0 select-none pb-[1px]">
         <span
@@ -268,7 +259,7 @@ export const VerticalDayRow: React.FC<VerticalDayRowProps> = ({
               triggerHaptic('light');
               onDateClick(date);
             }}
-            className="flex items-center justify-center shrink-0 h-[20px] px-1.5 text-[10px] font-bold text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-950/80 border border-blue-200 dark:border-blue-800 rounded-md shadow-2xs hover:bg-blue-100 dark:hover:bg-blue-900 transition active:scale-95 cursor-pointer whitespace-nowrap"
+            className="flex items-center justify-center shrink-0 h-[18px] px-1.5 text-[10px] font-bold text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-950/80 border border-blue-200 dark:border-blue-800 rounded-md shadow-2xs hover:bg-blue-100 dark:hover:bg-blue-900 transition active:scale-95 cursor-pointer whitespace-nowrap"
             title={`他 ${visibleChips.length - 3} 件の予定があります（タップで詳細表示）`}
           >
             +{visibleChips.length - 3}
@@ -277,4 +268,4 @@ export const VerticalDayRow: React.FC<VerticalDayRowProps> = ({
       </div>
     </div>
   );
-};
+});

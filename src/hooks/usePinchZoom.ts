@@ -53,11 +53,19 @@ export function usePinchZoom({
     [maxZoom, minZoom, onZoomChange]
   );
 
-  const handleTouchEnd = useCallback((e: TouchEvent) => {
-    if (e.touches.length < 2) {
-      initialDistRef.current = null;
-    }
-  }, []);
+  const handleTouchEnd = useCallback(
+    (e: TouchEvent) => {
+      if (e.touches.length < 2) {
+        initialDistRef.current = null;
+        // Snap cleanly to minZoom (1.0x 1-screen fit) when pinched down near 1.0x
+        if (zoomRef.current > minZoom && zoomRef.current < minZoom + 0.06) {
+          setZoom(minZoom);
+          onZoomChange?.(minZoom);
+        }
+      }
+    },
+    [minZoom, onZoomChange]
+  );
 
   useEffect(() => {
     const el = containerRef.current;
@@ -77,33 +85,9 @@ export function usePinchZoom({
     };
   }, [handleTouchStart, handleTouchMove, handleTouchEnd]);
 
-  const resetZoom = () => {
-    setZoom(1.0);
-    onZoomChange?.(1.0);
-  };
-
-  const zoomIn = () => {
-    const next = Math.min(maxZoom, zoom + 0.3);
-    setZoom(next);
-    onZoomChange?.(next);
-  };
-
-  const zoomOut = () => {
-    const next = Math.max(minZoom, zoom - 0.3);
-    setZoom(next);
-    onZoomChange?.(next);
-  };
-
-  // DnD only allowed when zoomed in adequately (>= 1.4x)
-  const isDragAllowed = zoom >= 1.4;
-
   return {
     zoom,
     setZoom,
     containerRef,
-    resetZoom,
-    zoomIn,
-    zoomOut,
-    isDragAllowed,
   };
 }

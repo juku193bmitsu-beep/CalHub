@@ -25,8 +25,6 @@ interface CalendarContextType {
   updateArrowSettings: (settings: Partial<ArrowDesignSettings>) => void;
   timedEventStyle: TimedEventStyle;
   setTimedEventStyle: (style: TimedEventStyle) => void;
-  showZoomControls: boolean;
-  setShowZoomControls: (show: boolean) => void;
   verticalFontSize: VerticalFontSize;
   setVerticalFontSize: (size: VerticalFontSize) => void;
   verticalFontWeight: VerticalFontWeight;
@@ -133,21 +131,6 @@ export const CalendarProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     return 'badge';
   });
 
-  const [showZoomControls, setShowZoomControls] = useState<boolean>(() => {
-    try {
-      const saved = localStorage.getItem(STORAGE_KEY_PREFS);
-      if (saved) {
-        const parsed: UserPreferences = JSON.parse(saved);
-        if (typeof parsed.showZoomControls === 'boolean') {
-          return parsed.showZoomControls;
-        }
-      }
-    } catch {
-      // fallback
-    }
-    return true;
-  });
-
   const [verticalFontSize, setVerticalFontSize] = useState<VerticalFontSize>(() => {
     try {
       const saved = localStorage.getItem(STORAGE_KEY_PREFS);
@@ -178,7 +161,29 @@ export const CalendarProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     return 'bold'; // Default to bold for high readability
   });
 
-  const [theme, setTheme] = useState<'light' | 'dark'>('light');
+  const [theme, setTheme] = useState<'light' | 'dark'>(() => {
+    try {
+      const saved = localStorage.getItem(STORAGE_KEY_PREFS);
+      if (saved) {
+        const parsed: UserPreferences = JSON.parse(saved);
+        if (parsed.theme === 'dark' || parsed.theme === 'light') {
+          return parsed.theme;
+        }
+      }
+    } catch {
+      // fallback
+    }
+    return 'light';
+  });
+
+  // Sync dark mode class on root HTML element
+  useEffect(() => {
+    if (theme === 'dark') {
+      document.documentElement.classList.add('dark');
+    } else {
+      document.documentElement.classList.remove('dark');
+    }
+  }, [theme]);
 
   // Fetch calendars when token becomes available
   const refreshCalendars = useCallback(async () => {
@@ -191,8 +196,21 @@ export const CalendarProvider: React.FC<{ children: React.ReactNode }> = ({ chil
       setIsSyncing(true);
       const googleCalendars = await CalendarApiService.listCalendars(authToken);
       if (googleCalendars.length > 0) {
-        setCalendars(googleCalendars);
-        localStorage.setItem(STORAGE_KEY_CALENDARS, JSON.stringify(googleCalendars));
+        setCalendars((prev) => {
+          const prevMap = new Map(prev.map((c) => [c.id, c]));
+          const merged = googleCalendars.map((gc) => {
+            const existing = prevMap.get(gc.id);
+            return {
+              ...gc,
+              ...(existing?.customTextColor ? { customTextColor: existing.customTextColor } : {}),
+              ...(existing?.backgroundColor ? { backgroundColor: existing.backgroundColor } : {}),
+            };
+          });
+          try {
+            localStorage.setItem(STORAGE_KEY_CALENDARS, JSON.stringify(merged));
+          } catch {}
+          return merged;
+        });
 
         // Ensure newly loaded calendars are visible if none selected
         setVisibleCalendarIds((prev) => {
@@ -229,7 +247,6 @@ export const CalendarProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         visibleCalendarIds: Array.from(visibleCalendarIds),
         arrowSettings,
         timedEventStyle,
-        showZoomControls,
         verticalFontSize,
         verticalFontWeight,
         theme,
@@ -238,9 +255,9 @@ export const CalendarProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     } catch (e) {
       console.error('Failed to save preferences to localStorage', e);
     }
-  }, [visibleCalendarIds, arrowSettings, timedEventStyle, showZoomControls, verticalFontSize, verticalFontWeight, theme]);
+  }, [visibleCalendarIds, arrowSettings, timedEventStyle, verticalFontSize, verticalFontWeight, theme]);
 
-  const toggleCalendarVisibility = (id: string) => {
+  const toggleCalendarVisibility = useCallback((id: string) => {
     setVisibleCalendarIds((prev) => {
       const next = new Set(prev);
       if (next.has(id)) {
@@ -252,32 +269,27 @@ export const CalendarProvider: React.FC<{ children: React.ReactNode }> = ({ chil
       }
       return next;
     });
-  };
+  }, []);
 
-  const setAllCalendarsVisible = (visible: boolean) => {
-    if (visible) {
-      setVisibleCalendarIds(new Set(calendars.map((c) => c.id)));
-    } else {
-      const firstId = calendars[0]?.id || 'primary';
-      setVisibleCalendarIds(new Set([firstId]));
-    }
-  };
-
-  const updateArrowSettings = (settings: Partial<ArrowDesignSettings>) => {
-    setArrowSettings((prev) => ({ ...prev, ...settings }));
-  };
-
-  const toggleTheme = () => {
-    setTheme((prev) => {
-      const next = prev === 'light' ? 'dark' : 'light';
-      if (next === 'dark') {
-        document.documentElement.classList.add('dark');
+  const setAllCalendarsVisible = useCallback(
+    (visible: boolean) => {
+      if (visible) {
+        setVisibleCalendarIds(new Set(calendars.map((c) => c.id)));
       } else {
-        document.documentElement.classList.remove('dark');
+        const firstId = calendars[0]?.id || 'primary';
+        setVisibleCalendarIds(new Set([firstId]));
       }
-      return next;
-    });
-  };
+    },
+    [calendars]
+  );
+
+  const updateArrowSettings = useCallback((settings: Partial<ArrowDesignSettings>) => {
+    setArrowSettings((prev) => ({ ...prev, ...settings }));
+  }, []);
+
+  const toggleTheme = useCallback(() => {
+    setTheme((prev) => (prev === 'light' ? 'dark' : 'light'));
+  }, []);
 
   const updateCalendarColor = useCallback(
     (id: string, colors: { backgroundColor?: string; customTextColor?: string }) => {
@@ -312,8 +324,6 @@ export const CalendarProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         updateArrowSettings,
         timedEventStyle,
         setTimedEventStyle,
-        showZoomControls,
-        setShowZoomControls,
         verticalFontSize,
         setVerticalFontSize,
         verticalFontWeight,

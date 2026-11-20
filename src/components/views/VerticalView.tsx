@@ -1,4 +1,11 @@
-import React, { useRef, useState, useEffect, useMemo, useCallback } from 'react';
+import React, {
+  useRef,
+  useState,
+  useEffect,
+  useLayoutEffect,
+  useMemo,
+  useCallback,
+} from 'react';
 import { useEvents } from '../../contexts/EventContext';
 import { useCalendar } from '../../contexts/CalendarContext';
 import { CalendarEvent } from '../../types/calendar';
@@ -49,6 +56,37 @@ const VerticalMonthPanel: React.FC<VerticalMonthPanelProps> = React.memo(
       return Array.from({ length: daysInMonth }, (_, i) => new Date(year, month - 1, i + 1));
     }, [year, month, daysInMonth]);
 
+    // Pre-filter and index events for this specific month once to avoid O(31 * N) scans on every render
+    const { monthEvents, dayDataMap } = useMemo(() => {
+      const pad = (n: number) => String(n).padStart(2, '0');
+      const monthStartStr = `${year}-${pad(month)}-01`;
+      const monthEndStr = `${year}-${pad(month)}-${pad(daysInMonth)}`;
+
+      // Filter only events overlapping with this month
+      const relevant = filteredEvents.filter((e) => {
+        const startStr = getEventStartDateStr(e);
+        const endStr = getEventEndDateInclusiveStr(e) || startStr;
+        if (!startStr) return false;
+        return startStr <= monthEndStr && endStr >= monthStartStr;
+      });
+
+      const multiDayRelevant = relevant.filter(isMultiDayEvent);
+      const map = new Map<string, { dayEvents: CalendarEvent[]; hasArrowPassing: boolean }>();
+
+      for (const date of days) {
+        const dateStr = formatLocalDate(date);
+        const dayEvents = relevant.filter((e) => isEventOnDate(e, dateStr));
+        const hasArrowPassing = multiDayRelevant.some((e) => {
+          const startStr = getEventStartDateStr(e);
+          const endStr = getEventEndDateInclusiveStr(e);
+          return Boolean(startStr && endStr && dateStr > startStr && dateStr <= endStr);
+        });
+        map.set(dateStr, { dayEvents, hasArrowPassing });
+      }
+
+      return { monthEvents: relevant, dayDataMap: map };
+    }, [filteredEvents, year, month, daysInMonth, days]);
+
     return (
       <div
         onScroll={onScroll}
@@ -56,7 +94,7 @@ const VerticalMonthPanel: React.FC<VerticalMonthPanelProps> = React.memo(
       >
         <div className="relative min-w-full pb-0">
           <MultiDayArrowCanvas
-            events={filteredEvents}
+            events={monthEvents}
             year={year}
             month={month}
             daysInMonth={daysInMonth}
@@ -69,25 +107,16 @@ const VerticalMonthPanel: React.FC<VerticalMonthPanelProps> = React.memo(
             const dayNum = date.getDate();
             const isToday = isCurrentMonth && dayNum === todayDateNum;
             const dateStr = formatLocalDate(date);
-
-            const dayEvents = filteredEvents.filter((e) => isEventOnDate(e, dateStr));
-
-            const hasArrowPassing = filteredEvents.some((e) => {
-              if (!isMultiDayEvent(e)) return false;
-              const startStr = getEventStartDateStr(e);
-              const endStr = getEventEndDateInclusiveStr(e);
-              if (!startStr || !endStr) return false;
-              return dateStr > startStr && dateStr <= endStr;
-            });
+            const dayData = dayDataMap.get(dateStr);
 
             return (
               <VerticalDayRow
                 key={dateStr}
                 date={date}
-                events={dayEvents}
+                events={dayData?.dayEvents || []}
                 rowHeight={effectiveRowHeight}
                 isToday={isToday}
-                hasArrowPassing={hasArrowPassing}
+                hasArrowPassing={dayData?.hasArrowPassing || false}
                 isDraggable={true}
                 onDateClick={onDateClick}
                 onEventClick={onEventClick}
@@ -120,6 +149,7 @@ export const VerticalView: React.FC<VerticalViewProps> = ({
 
   const containerRef = useRef<HTMLDivElement | null>(null);
   const trackRef = useRef<HTMLDivElement | null>(null);
+  const animTimeoutRef = useRef<number | null>(null);
 
   // Height measurement for fixed 31 days basis
   const [containerHeight, setContainerHeight] = useState<number>(() => {
@@ -130,6 +160,9 @@ export const VerticalView: React.FC<VerticalViewProps> = ({
   });
 
   useEffect(() => {
+    const el = containerRef.current;
+    if (!el) return;
+
     const updateSize = () => {
       if (containerRef.current) {
         const h = containerRef.current.clientHeight;
@@ -138,9 +171,29 @@ export const VerticalView: React.FC<VerticalViewProps> = ({
         }
       }
     };
+
     updateSize();
     window.addEventListener('resize', updateSize);
-    return () => window.removeEventListener('resize', updateSize);
+
+    let observer: ResizeObserver | null = null;
+    if (typeof ResizeObserver !== 'undefined') {
+      observer = new ResizeObserver(updateSize);
+      observer.observe(el);
+    }
+
+    return () => {
+      window.removeEventListener('resize', updateSize);
+      observer?.disconnect();
+    };
+  }, []);
+
+  // Cleanup pending animation timeout on unmount
+  useEffect(() => {
+    return () => {
+      if (animTimeoutRef.current !== null) {
+        window.clearTimeout(animTimeoutRef.current);
+      }
+    };
   }, []);
 
   // Pinch zoom hook (zoom with 2 fingers, clean and unobscured without buttons)
@@ -165,6 +218,19 @@ export const VerticalView: React.FC<VerticalViewProps> = ({
   const isVerticalScrollRef = useRef<boolean>(false);
   const directionLockedRef = useRef<boolean>(false);
   const isAnimatingRef = useRef<boolean>(false);
+
+  // Synchronously reset track transform on the exact frame React commits a new currentDate to DOM
+  useLayoutEffect(() => {
+    if (animTimeoutRef.current !== null) {
+      window.clearTimeout(animTimeoutRef.current);
+      animTimeoutRef.current = null;
+    }
+    if (trackRef.current) {
+      trackRef.current.style.transition = 'none';
+      trackRef.current.style.transform = 'translateX(0px)';
+    }
+    isAnimatingRef.current = false;
+  }, [currentDate]);
 
   const handleScroll = useCallback(() => {
     suppressNextClicks(220);
@@ -284,17 +350,13 @@ export const VerticalView: React.FC<VerticalViewProps> = ({
         trackRef.current.style.transition = 'transform 0.22s cubic-bezier(0.16, 1, 0.3, 1)';
         trackRef.current.style.transform = `translateX(${targetTranslate}px)`;
 
-        setTimeout(() => {
-          if (trackRef.current) {
-            trackRef.current.style.transition = 'none';
-            trackRef.current.style.transform = 'translateX(0px)';
-          }
+        animTimeoutRef.current = window.setTimeout(() => {
+          animTimeoutRef.current = null;
           if (isNext) {
             onNextMonth();
           } else {
             onPrevMonth();
           }
-          isAnimatingRef.current = false;
         }, 220);
       } else if (trackRef.current) {
         // Bounce back to current month
