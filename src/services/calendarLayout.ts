@@ -3,6 +3,8 @@ import {
   getEventStartDateStr,
   getEventEndDateInclusiveStr,
   formatLocalDate,
+  isMultiDayEvent,
+  compareEventsByDisplayOrder,
 } from './dateUtils';
 
 export interface LayoutEventSegment {
@@ -34,47 +36,27 @@ export function computeWeekLayout(
   // Filter events overlapping with this week
   const overlapping = events.filter((e) => {
     const s = getEventStartDateStr(e);
-    const endInc = getEventEndDateInclusiveStr(e);
+    const endInc = isMultiDayEvent(e) ? getEventEndDateInclusiveStr(e) : s;
     if (!s) return false;
     return s <= weekEndStr && endInc >= weekStartStr;
   });
 
-  // Sort events:
-  // 1. Multi-day / All-day first
-  // 2. Longer spans first (to pack tightly at top lanes)
-  // 3. Earlier start date first
-  const sorted = overlapping.sort((a, b) => {
-    const aIsAllDay = !!a.isAllDay || (!a.start.dateTime && !!a.start.date);
-    const bIsAllDay = !!b.isAllDay || (!b.start.dateTime && !!b.start.date);
-    const aStart = getEventStartDateStr(a);
-    const bStart = getEventStartDateStr(b);
-    const aEnd = getEventEndDateInclusiveStr(a);
-    const bEnd = getEventEndDateInclusiveStr(b);
-
-    const aIsMulti = aStart !== aEnd;
-    const bIsMulti = bStart !== bEnd;
-
-    const aPriority = aIsMulti || aIsAllDay ? 2 : 1;
-    const bPriority = bIsMulti || bIsAllDay ? 2 : 1;
-    if (aPriority !== bPriority) return bPriority - aPriority;
-
-    const aDuration = new Date(aEnd).getTime() - new Date(aStart).getTime();
-    const bDuration = new Date(bEnd).getTime() - new Date(bStart).getTime();
-    if (aDuration !== bDuration) return bDuration - aDuration;
-
-    if (aStart !== bStart) return aStart.localeCompare(bStart);
-    return (a.id || '').localeCompare(b.id || '');
-  });
+  // Sort events strictly according to defined display order:
+  // 1. Multi-day arrow events first (longer span first)
+  // 2. Single-day all-day events second
+  // 3. Timed events third (earliest start first)
+  const sorted = [...overlapping].sort(compareEventsByDisplayOrder);
 
   const segments: LayoutEventSegment[] = [];
   const laneOccupancy: boolean[][] = []; // laneOccupancy[laneIndex][colIndex 0..6]
 
   sorted.forEach((event) => {
     const sStr = getEventStartDateStr(event);
-    const endStr = getEventEndDateInclusiveStr(event);
+    const isMultiDay = isMultiDayEvent(event);
+    // If not multi-day (including overnight <24h), endStr is clamped to start date
+    const endStr = isMultiDay ? getEventEndDateInclusiveStr(event) : sStr;
 
     const isAllDay = !!event.isAllDay || (!event.start.dateTime && !!event.start.date);
-    const isMultiDay = sStr !== endStr;
     const isAllDayOrMultiDay = isAllDay || isMultiDay;
 
     // Calculate clamped columns within this week [0..6]

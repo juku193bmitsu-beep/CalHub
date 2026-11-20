@@ -4,7 +4,7 @@ import { useEvents } from '../../contexts/EventContext';
 import { CalendarEvent } from '../../types/calendar';
 import { EventChip } from '../events/EventChip';
 import { getJapaneseHoliday } from '../../constants/holidays';
-import { formatLocalDate, isEventOnDate } from '../../services/dateUtils';
+import { formatLocalDate, isEventOnDate, compareEventsByDisplayOrder } from '../../services/dateUtils';
 import { isClickSuppressed, suppressNextClicks, triggerHaptic } from '../../services/gestureUtils';
 import { Calendar } from 'lucide-react';
 
@@ -190,10 +190,12 @@ export const CompareView: React.FC<CompareViewProps> = ({
                 {/* Each Calendar Lane */}
                 <div className="flex">
                   {activeCalendars.map((cal) => {
-                    const eventsInCell = filteredEvents.filter((ev) => {
-                      if (ev.calendarId !== cal.id) return false;
-                      return isEventOnDate(ev, dateStr);
-                    });
+                    const eventsInCell = filteredEvents
+                      .filter((ev) => {
+                        if (ev.calendarId !== cal.id) return false;
+                        return isEventOnDate(ev, dateStr);
+                      })
+                      .sort(compareEventsByDisplayOrder);
 
                     return (
                       <div

@@ -180,8 +180,8 @@ export const AuthBar: React.FC<AuthBarProps> = ({ onTokenChange }) => {
     );
   }
 
-  // 3. If dismissed by user, do not show
-  if (isDismissed && !isExpiringSoon) {
+  // 3. If dismissed by user, respect dismissal and keep bar hidden
+  if (isDismissed) {
     return null;
   }
 

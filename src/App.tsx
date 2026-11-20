@@ -34,10 +34,12 @@ export const CalHubApp: React.FC = () => {
   const [currentDate, setCurrentDate] = useState<Date>(new Date());
   const [pasteToast, setPasteToast] = useState<string | null>(null);
 
-  // Automatically fetch events on-demand for whatever month the user is currently looking at!
-  // Guarantees past 10 years and future years always load and never show blank.
+  // Fetch events for target month with debouncing (350ms) to prevent excessive API calls during fast swiping
   useEffect(() => {
-    fetchEventsForMonth(currentDate.getFullYear(), currentDate.getMonth() + 1);
+    const timer = setTimeout(() => {
+      fetchEventsForMonth(currentDate.getFullYear(), currentDate.getMonth() + 1);
+    }, 350);
+    return () => clearTimeout(timer);
   }, [currentDate, fetchEventsForMonth]);
 
   // Persist view type preference in localStorage

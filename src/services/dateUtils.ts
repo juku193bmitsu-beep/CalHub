@@ -64,23 +64,130 @@ export function getEventEndDateInclusiveStr(event: CalendarEvent): string {
 }
 
 /**
- * Checks if an event occurs on target YYYY-MM-DD date
+ * Checks if an event occurs on target YYYY-MM-DD date.
+ * - Multi-day events (spans >= 2 days or >= 24h) occur on all dates from start to end inclusive.
+ * - Single-day events and overnight timed events (< 24h) occur ONLY on their start date.
  */
 export function isEventOnDate(event: CalendarEvent, targetDateStr: string): boolean {
   const startStr = getEventStartDateStr(event);
-  const endInclusiveStr = getEventEndDateInclusiveStr(event);
-
   if (!startStr) return false;
-  return targetDateStr >= startStr && targetDateStr <= endInclusiveStr;
+
+  if (isMultiDayEvent(event)) {
+    const endInclusiveStr = getEventEndDateInclusiveStr(event);
+    return targetDateStr >= startStr && targetDateStr <= endInclusiveStr;
+  }
+
+  return targetDateStr === startStr;
 }
 
 /**
- * Checks if an event is multi-day (spans across multiple dates)
+ * Checks if an event is multi-day (requires arrows or spanning bars).
+ * - All-day events spanning 2 or more days return true.
+ * - Timed events lasting 24 hours or longer return true.
+ * - Overnight timed events under 24h (e.g. 23:00 to 02:00 next day) return FALSE
+ *   so they are treated as single-day timed events on the start date.
  */
 export function isMultiDayEvent(event: CalendarEvent): boolean {
   const startStr = getEventStartDateStr(event);
   const endInclusiveStr = getEventEndDateInclusiveStr(event);
-  return !!startStr && !!endInclusiveStr && startStr !== endInclusiveStr;
+  if (!startStr || !endInclusiveStr || startStr === endInclusiveStr) {
+    return false;
+  }
+
+  const isAllDay = !!event.isAllDay || (!event.start.dateTime && !!event.start.date);
+  if (isAllDay) {
+    return true;
+  }
+
+  // Timed event spanning dates: check if duration >= 24 hours (86,400,000 ms)
+  if (event.start.dateTime && event.end.dateTime) {
+    const s = new Date(event.start.dateTime).getTime();
+    const e = new Date(event.end.dateTime).getTime();
+    if (!isNaN(s) && !isNaN(e)) {
+      return (e - s) >= 24 * 60 * 60 * 1000;
+    }
+  }
+
+  // Default: overnight timed events (< 24h) are treated as single-day events on start date
+  return false;
+}
+
+/**
+ * Priority rank for event ordering:
+ * 1: Multi-day arrow event (spans >= 2 days or >= 24h)
+ * 2: Single-day all-day event
+ * 3: Timed event (including overnight events < 24h)
+ */
+export function getEventPriorityRank(event: CalendarEvent): number {
+  if (isMultiDayEvent(event)) {
+    return 1;
+  }
+  const isAllDay = !!event.isAllDay || (!event.start.dateTime && !!event.start.date);
+  if (isAllDay) {
+    return 2;
+  }
+  return 3;
+}
+
+/**
+ * Standard comparator for sorting calendar events according to the defined rules:
+ * 1. Multi-day arrow events first
+ *    - longer duration first, then earlier start date, then title
+ * 2. Single-day all-day events second
+ *    - title order
+ * 3. Timed events third (including overnight events)
+ *    - earlier start time first, then longer duration, then title
+ */
+export function compareEventsByDisplayOrder(a: CalendarEvent, b: CalendarEvent): number {
+  const aRank = getEventPriorityRank(a);
+  const bRank = getEventPriorityRank(b);
+
+  if (aRank !== bRank) {
+    return aRank - bRank;
+  }
+
+  // Sub-sort for Rank 1 (Multi-day arrows)
+  if (aRank === 1) {
+    const aStart = getEventStartDateStr(a);
+    const bStart = getEventStartDateStr(b);
+    const aEnd = getEventEndDateInclusiveStr(a);
+    const bEnd = getEventEndDateInclusiveStr(b);
+
+    const aDur = new Date(aEnd).getTime() - new Date(aStart).getTime();
+    const bDur = new Date(bEnd).getTime() - new Date(bStart).getTime();
+    if (aDur !== bDur) {
+      return bDur - aDur; // longer duration first
+    }
+    if (aStart !== bStart) {
+      return aStart.localeCompare(bStart);
+    }
+    return (a.summary || '').localeCompare(b.summary || '', 'ja');
+  }
+
+  // Sub-sort for Rank 2 (Single-day all-day)
+  if (aRank === 2) {
+    return (a.summary || '').localeCompare(b.summary || '', 'ja');
+  }
+
+  // Sub-sort for Rank 3 (Timed events)
+  const aTime = a.start.dateTime || a.start.date || '';
+  const bTime = b.start.dateTime || b.start.date || '';
+  if (aTime !== bTime) {
+    return aTime.localeCompare(bTime);
+  }
+
+  // If start times match, longer duration first
+  const aStartMs = new Date(a.start.dateTime || a.start.date || '').getTime();
+  const aEndMs = new Date(a.end.dateTime || a.end.date || a.start.dateTime || '').getTime();
+  const bStartMs = new Date(b.start.dateTime || b.start.date || '').getTime();
+  const bEndMs = new Date(b.end.dateTime || b.end.date || b.start.dateTime || '').getTime();
+  const aDur = aEndMs - aStartMs;
+  const bDur = bEndMs - bStartMs;
+  if (!isNaN(aDur) && !isNaN(bDur) && aDur !== bDur) {
+    return bDur - aDur;
+  }
+
+  return (a.summary || '').localeCompare(b.summary || '', 'ja');
 }
 
 /**

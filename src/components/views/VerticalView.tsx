@@ -13,6 +13,7 @@ import {
   isEventOnDate,
   getEventStartDateStr,
   getEventEndDateInclusiveStr,
+  isMultiDayEvent,
 } from '../../services/dateUtils';
 
 interface VerticalViewProps {
@@ -78,8 +79,8 @@ export const VerticalView: React.FC<VerticalViewProps> = ({
     suppressNextClicks(220);
   };
 
-  // Calculate base row height so all days fit without scroll at zoom 1.0
-  const baseRowHeight = Math.max(22, Math.floor(containerHeight / daysInMonth));
+  // Calculate base row height: fixed 31 days basis so every month has identical row height!
+  const baseRowHeight = Math.max(22, Math.floor(containerHeight / 31));
   const effectiveRowHeight = Math.floor(baseRowHeight * zoom);
 
   const today = new Date();
@@ -128,9 +129,10 @@ export const VerticalView: React.FC<VerticalViewProps> = ({
 
           // Check if a multi-day arrow is passing through this day (strictly day 2 to end)
           const hasArrowPassing = filteredEvents.some((e) => {
+            if (!isMultiDayEvent(e)) return false;
             const startStr = getEventStartDateStr(e);
             const endStr = getEventEndDateInclusiveStr(e);
-            if (!startStr || !endStr || startStr === endStr) return false;
+            if (!startStr || !endStr) return false;
             return dateStr > startStr && dateStr <= endStr;
           });
 

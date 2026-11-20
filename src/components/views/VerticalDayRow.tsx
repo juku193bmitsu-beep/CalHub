@@ -2,7 +2,12 @@ import React, { useState, useRef } from 'react';
 import { CalendarEvent } from '../../types/calendar';
 import { EventChip } from '../events/EventChip';
 import { getJapaneseHoliday } from '../../constants/holidays';
-import { formatLocalDate, getEventStartDateStr, isMultiDayEvent } from '../../services/dateUtils';
+import {
+  formatLocalDate,
+  getEventStartDateStr,
+  isMultiDayEvent,
+  compareEventsByDisplayOrder,
+} from '../../services/dateUtils';
 import { useEvents } from '../../contexts/EventContext';
 import { useCalendar } from '../../contexts/CalendarContext';
 import { isClickSuppressed, suppressNextClicks, triggerHaptic } from '../../services/gestureUtils';
@@ -72,25 +77,7 @@ export const VerticalDayRow: React.FC<VerticalDayRowProps> = ({
       }
       return true;
     })
-    .sort((a, b) => {
-      const aMulti = isMultiDayEvent(a);
-      const bMulti = isMultiDayEvent(b);
-
-      // 1. Multi-day arrow events ALWAYS come FIRST (leftmost slot)
-      if (aMulti && !bMulti) return -1;
-      if (!aMulti && bMulti) return 1;
-
-      // 2. All-day single-day events come before timed events
-      const aAllDay = !!a.isAllDay || (!a.start.dateTime && !!a.start.date);
-      const bAllDay = !!b.isAllDay || (!b.start.dateTime && !!b.start.date);
-      if (aAllDay && !bAllDay) return -1;
-      if (!aAllDay && bAllDay) return 1;
-
-      // 3. Otherwise sort chronologically
-      const aTime = a.start.dateTime || a.start.date || '';
-      const bTime = b.start.dateTime || b.start.date || '';
-      return aTime.localeCompare(bTime);
-    });
+    .sort(compareEventsByDisplayOrder);
 
   const handleDragOver = (e: React.DragEvent) => {
     e.preventDefault();

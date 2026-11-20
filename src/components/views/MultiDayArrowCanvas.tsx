@@ -4,6 +4,7 @@ import { ArrowDesignSettings } from '../../types/settings';
 import {
   getEventStartDateStr,
   getEventEndDateInclusiveStr,
+  isMultiDayEvent,
 } from '../../services/dateUtils';
 
 interface MultiDaySpan {
@@ -36,12 +37,12 @@ export const MultiDayArrowCanvas: React.FC<MultiDayArrowCanvasProps> = ({
   const monthStartStr = `${year}-${pad(month)}-01`;
   const monthEndStr = `${year}-${pad(month)}-${pad(daysInMonth)}`;
 
-  // Find multi-day events that overlap with this month
+  // Find multi-day events that overlap with this month (requires vertical arrows)
   const multiDayEvents = events.filter((e) => {
+    if (!isMultiDayEvent(e)) return false;
     const startStr = getEventStartDateStr(e);
     const endStr = getEventEndDateInclusiveStr(e);
     if (!startStr || !endStr) return false;
-    if (startStr === endStr) return false; // single day
 
     // Overlaps with current month
     return startStr <= monthEndStr && endStr >= monthStartStr;

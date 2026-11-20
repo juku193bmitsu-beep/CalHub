@@ -43,7 +43,8 @@ export const EventProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   const [isFetchingMonth, setIsFetchingMonth] = useState<boolean>(false);
   const [syncStatusMessage, setSyncStatusMessage] = useState<string | null>(null);
   const isSyncingRef = useRef<boolean>(false);
-  const fetchedMonthsRef = useRef<Set<string>>(new Set());
+  // Store fetched timestamps: monthKey -> timestamp
+  const fetchedMonthsRef = useRef<Map<string, number>>(new Map());
 
   // Load from localStorage or initialize with mock data
   const [events, setEvents] = useState<CalendarEvent[]>(() => {
@@ -123,13 +124,23 @@ export const EventProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     };
   }, [events]);
 
-  // On-demand fetch for viewed month window (1 month before to 1 month after, 3 months total)
-  // Ensures whenever the user views ANY past or future month, events load immediately in real-time!
+  // On-demand fetch for viewed month window (cached for 10 minutes, skips when offline)
+  // Ensures whenever the user views ANY past or future month, events load cleanly without excessive calls!
   const fetchEventsForMonth = useCallback(
     async (year: number, month: number, force: boolean = false): Promise<number> => {
+      // If offline, rely directly on IndexedDB / localStorage data
+      if (typeof navigator !== 'undefined' && !navigator.onLine) {
+        return 0;
+      }
+
       const monthKey = `${year}-${String(month).padStart(2, '0')}`;
       if (!authToken || visibleCalendarIds.size === 0) return 0;
-      if (!force && fetchedMonthsRef.current.has(monthKey)) return 0;
+
+      // 10-minute cache window to avoid repeated network calls when switching back and forth
+      const lastFetched = fetchedMonthsRef.current.get(monthKey);
+      if (!force && lastFetched && (Date.now() - lastFetched) < 10 * 60 * 1000) {
+        return 0;
+      }
 
       try {
         setIsFetchingMonth(true);
@@ -182,7 +193,7 @@ export const EventProvider: React.FC<{ children: React.ReactNode }> = ({ childre
           });
         }
 
-        fetchedMonthsRef.current.add(monthKey);
+        fetchedMonthsRef.current.set(monthKey, Date.now());
         return newEventsCount;
       } catch (err) {
         console.error(`[fetchEventsForMonth] Error for ${monthKey}:`, err);
