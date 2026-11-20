@@ -38,6 +38,11 @@ export const CalHubApp: React.FC = () => {
   useEffect(() => {
     const timer = setTimeout(() => {
       fetchEventsForMonth(currentDate.getFullYear(), currentDate.getMonth() + 1);
+      // Pre-fetch adjacent months for seamless continuous carousel transitions
+      const prev = addMonthsSafe(currentDate, -1);
+      const next = addMonthsSafe(currentDate, 1);
+      fetchEventsForMonth(prev.getFullYear(), prev.getMonth() + 1);
+      fetchEventsForMonth(next.getFullYear(), next.getMonth() + 1);
     }, 350);
     return () => clearTimeout(timer);
   }, [currentDate, fetchEventsForMonth]);
@@ -172,11 +177,17 @@ export const CalHubApp: React.FC = () => {
       {/* Main Calendar View Area (Top to Fill) */}
       <main className="flex-1 flex overflow-hidden relative pt-safe">
         <div
-          key={`${viewType}-${currentDate.getFullYear()}-${currentDate.getMonth()}-${viewType === 'week' ? currentDate.getDate() : ''}`}
+          key={
+            viewType === 'vertical'
+              ? 'vertical'
+              : `${viewType}-${currentDate.getFullYear()}-${currentDate.getMonth()}-${
+                  viewType === 'week' ? currentDate.getDate() : ''
+                }`
+          }
           className={`flex-1 flex flex-col h-full w-full overflow-hidden ${
-            viewType !== 'month' && flipDirection === 'next'
+            viewType !== 'month' && viewType !== 'vertical' && flipDirection === 'next'
               ? 'animate-page-turn-next'
-              : viewType !== 'month' && flipDirection === 'prev'
+              : viewType !== 'month' && viewType !== 'vertical' && flipDirection === 'prev'
               ? 'animate-page-turn-prev'
               : ''
           }`}

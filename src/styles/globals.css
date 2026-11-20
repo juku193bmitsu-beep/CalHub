@@ -57,23 +57,23 @@
 /* Page flip transition animations */
 @keyframes pageTurnNext {
   0% {
-    opacity: 0.65;
-    transform: translateX(40px) scale(0.99);
+    opacity: 0.85;
+    transform: translateX(24px);
   }
   100% {
     opacity: 1;
-    transform: translateX(0) scale(1);
+    transform: translateX(0);
   }
 }
 
 @keyframes pageTurnPrev {
   0% {
-    opacity: 0.65;
-    transform: translateX(-40px) scale(0.99);
+    opacity: 0.85;
+    transform: translateX(-24px);
   }
   100% {
     opacity: 1;
-    transform: translateX(0) scale(1);
+    transform: translateX(0);
   }
 }
 

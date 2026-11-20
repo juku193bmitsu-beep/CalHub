@@ -64,38 +64,38 @@ export const Header: React.FC<HeaderProps> = ({
   }, [isViewMenuOpen]);
 
   return (
-    <footer className="bg-white/95 dark:bg-slate-900/95 backdrop-blur-md border-t border-slate-200/80 dark:border-slate-800 pb-safe pt-2 sm:py-3.5 px-2 sm:px-5 z-30 shrink-0 transition-colors shadow-lg">
-      <div className="flex items-center justify-between gap-1 sm:gap-3 max-w-7xl mx-auto w-full">
+    <footer className="bg-white/95 dark:bg-slate-900/95 backdrop-blur-md border-t border-slate-200/80 dark:border-slate-800 pb-safe pt-2.5 sm:py-3.5 px-2.5 sm:px-6 z-30 shrink-0 transition-colors shadow-lg sticky bottom-0">
+      <div className="flex items-center justify-between gap-1 sm:gap-4 max-w-7xl mx-auto w-full">
         {/* Left: Month Year Display & Date Navigation (＜ 2026年11月 ＞) */}
-        <div className="flex items-center gap-0.5 sm:gap-1 shrink-0">
+        <div className="flex items-center gap-0.5 sm:gap-1.5 shrink-0">
           <button
             onClick={onPrev}
-            className="p-1 sm:p-1.5 rounded-lg text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 active:scale-90 transition"
+            className="p-1 sm:p-2 rounded-xl text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 active:scale-90 transition"
             aria-label="前へ"
             title="前へ"
           >
-            <ChevronLeft className="w-4 h-4 sm:w-5 h-5" />
+            <ChevronLeft className="w-5 h-5 sm:w-6 h-6" />
           </button>
 
           {/* Month & Year Title: Clickable Drum Roll Trigger */}
           <button
             type="button"
             onClick={onOpenYearMonthPicker}
-            className="px-1.5 sm:px-2 py-1 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800 transition active:scale-95 cursor-pointer text-center"
+            className="px-1.5 sm:px-2.5 py-1 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800 transition active:scale-95 cursor-pointer text-center"
             title="タップして年月をドラムロールで選択"
           >
-            <h1 className="text-sm sm:text-lg md:text-xl font-bold sm:font-extrabold tracking-tight text-slate-900 dark:text-white tabular-nums whitespace-nowrap">
+            <h1 className="text-base sm:text-xl md:text-2xl font-black tracking-tight text-slate-900 dark:text-white tabular-nums whitespace-nowrap">
               {year}年{month}月
             </h1>
           </button>
 
           <button
             onClick={onNext}
-            className="p-1 sm:p-1.5 rounded-lg text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 active:scale-90 transition"
+            className="p-1 sm:p-2 rounded-xl text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 active:scale-90 transition"
             aria-label="次へ"
             title="次へ"
           >
-            <ChevronRight className="w-4 h-4 sm:w-5 h-5" />
+            <ChevronRight className="w-5 h-5 sm:w-6 h-6" />
           </button>
         </div>
 
@@ -103,7 +103,7 @@ export const Header: React.FC<HeaderProps> = ({
         <div className="flex items-center justify-center shrink-0">
           <button
             onClick={onToday}
-            className="px-2.5 sm:px-5 py-1 sm:py-1.5 text-xs sm:text-sm font-bold rounded-lg sm:rounded-xl bg-blue-50 hover:bg-blue-100 dark:bg-blue-950/60 dark:hover:bg-blue-900/60 text-blue-600 dark:text-blue-400 border border-blue-200/80 dark:border-blue-800/80 transition active:scale-90 shadow-2xs"
+            className="px-3 sm:px-5 py-1.5 sm:py-2 text-xs sm:text-sm font-extrabold rounded-xl bg-blue-600 hover:bg-blue-700 text-white dark:bg-blue-600 dark:hover:bg-blue-500 shadow-md transition active:scale-90"
             title="今日へ移動"
           >
             今日

@@ -1,20 +1,104 @@
-import React, { useRef, useState, useEffect } from 'react';
+import React, { useRef, useState, useEffect, useMemo, useCallback } from 'react';
 import { useEvents } from '../../contexts/EventContext';
 import { useCalendar } from '../../contexts/CalendarContext';
 import { CalendarEvent } from '../../types/calendar';
+import { ArrowDesignSettings } from '../../types/settings';
 import { VerticalDayRow } from './VerticalDayRow';
 import { MultiDayArrowCanvas } from './MultiDayArrowCanvas';
 import { usePinchZoom } from '../../hooks/usePinchZoom';
-import { useSwipeNavigation } from '../../hooks/useSwipeNavigation';
-import { suppressNextClicks } from '../../services/gestureUtils';
-import { ZoomIn, ZoomOut, RotateCcw, X } from 'lucide-react';
+import { suppressNextClicks, triggerHaptic } from '../../services/gestureUtils';
 import {
   formatLocalDate,
   isEventOnDate,
   getEventStartDateStr,
   getEventEndDateInclusiveStr,
   isMultiDayEvent,
+  addMonthsSafe,
 } from '../../services/dateUtils';
+
+interface VerticalMonthPanelProps {
+  targetDate: Date;
+  effectiveRowHeight: number;
+  filteredEvents: CalendarEvent[];
+  arrowSettings: ArrowDesignSettings;
+  onDateClick: (date: Date) => void;
+  onEventClick: (event: CalendarEvent) => void;
+  onScroll?: () => void;
+}
+
+const VerticalMonthPanel: React.FC<VerticalMonthPanelProps> = React.memo(
+  ({
+    targetDate,
+    effectiveRowHeight,
+    filteredEvents,
+    arrowSettings,
+    onDateClick,
+    onEventClick,
+    onScroll,
+  }) => {
+    const year = targetDate.getFullYear();
+    const month = targetDate.getMonth() + 1;
+    const daysInMonth = new Date(year, month, 0).getDate();
+
+    const today = new Date();
+    const isCurrentMonth =
+      today.getFullYear() === year && today.getMonth() === targetDate.getMonth();
+    const todayDateNum = today.getDate();
+
+    const days = useMemo(() => {
+      return Array.from({ length: daysInMonth }, (_, i) => new Date(year, month - 1, i + 1));
+    }, [year, month, daysInMonth]);
+
+    return (
+      <div
+        onScroll={onScroll}
+        className="w-full h-full overflow-y-auto overflow-x-hidden relative select-none bg-white dark:bg-slate-900"
+      >
+        <div className="relative min-w-full pb-0">
+          <MultiDayArrowCanvas
+            events={filteredEvents}
+            year={year}
+            month={month}
+            daysInMonth={daysInMonth}
+            rowHeight={effectiveRowHeight}
+            arrowSettings={arrowSettings}
+            onEventClick={onEventClick}
+          />
+
+          {days.map((date) => {
+            const dayNum = date.getDate();
+            const isToday = isCurrentMonth && dayNum === todayDateNum;
+            const dateStr = formatLocalDate(date);
+
+            const dayEvents = filteredEvents.filter((e) => isEventOnDate(e, dateStr));
+
+            const hasArrowPassing = filteredEvents.some((e) => {
+              if (!isMultiDayEvent(e)) return false;
+              const startStr = getEventStartDateStr(e);
+              const endStr = getEventEndDateInclusiveStr(e);
+              if (!startStr || !endStr) return false;
+              return dateStr > startStr && dateStr <= endStr;
+            });
+
+            return (
+              <VerticalDayRow
+                key={dateStr}
+                date={date}
+                events={dayEvents}
+                rowHeight={effectiveRowHeight}
+                isToday={isToday}
+                hasArrowPassing={hasArrowPassing}
+                isDraggable={true}
+                onDateClick={onDateClick}
+                onEventClick={onEventClick}
+              />
+            );
+          })}
+        </div>
+      </div>
+    );
+  }
+);
 
 interface VerticalViewProps {
   currentDate: Date;
@@ -32,21 +116,26 @@ export const VerticalView: React.FC<VerticalViewProps> = ({
   onNextMonth,
 }) => {
   const { filteredEvents } = useEvents();
-  const { arrowSettings, showZoomControls } = useCalendar();
+  const { arrowSettings } = useCalendar();
 
-  const [isZoomExpanded, setIsZoomExpanded] = useState<boolean>(false);
   const containerRef = useRef<HTMLDivElement | null>(null);
-  const [containerHeight, setContainerHeight] = useState<number>(600);
+  const trackRef = useRef<HTMLDivElement | null>(null);
 
-  const year = currentDate.getFullYear();
-  const month = currentDate.getMonth() + 1; // 1-12
-  const daysInMonth = new Date(year, month, 0).getDate();
+  // Height measurement for fixed 31 days basis
+  const [containerHeight, setContainerHeight] = useState<number>(() => {
+    if (typeof window !== 'undefined') {
+      return Math.max(500, window.innerHeight - 120);
+    }
+    return 700;
+  });
 
-  // Measure container height to calculate 1-screen fit row height
   useEffect(() => {
     const updateSize = () => {
       if (containerRef.current) {
-        setContainerHeight(containerRef.current.clientHeight);
+        const h = containerRef.current.clientHeight;
+        if (h > 0) {
+          setContainerHeight(h);
+        }
       }
     };
     updateSize();
@@ -54,44 +143,187 @@ export const VerticalView: React.FC<VerticalViewProps> = ({
     return () => window.removeEventListener('resize', updateSize);
   }, []);
 
-  // Pinch zoom hook
-  const {
-    zoom,
-    containerRef: pinchRef,
-    resetZoom,
-    zoomIn,
-    zoomOut,
-  } = usePinchZoom({
+  // Pinch zoom hook (zoom with 2 fingers, clean and unobscured without buttons)
+  const { zoom, containerRef: pinchRef } = usePinchZoom({
     minZoom: 1.0,
     maxZoom: 2.8,
     initialZoom: 1.0,
   });
 
-  // Swipe for month change (with direction locking, speed/distance hybrid & safeguards)
-  const { onTouchStart, onTouchMove, onTouchEnd, onTouchCancel } = useSwipeNavigation({
-    onSwipeLeft: onNextMonth,
-    onSwipeRight: onPrevMonth,
-    disabled: zoom > 1.25, // Lock horizontal swipe when zoomed in to avoid accidental flips
-  });
-
-  // Handle scroll to suppress accidental clicks during or immediately after vertical scrolling
-  const handleScroll = () => {
-    suppressNextClicks(220);
-  };
-
-  // Calculate base row height: fixed 31 days basis so every month has identical row height!
   const baseRowHeight = Math.max(22, Math.floor(containerHeight / 31));
   const effectiveRowHeight = Math.floor(baseRowHeight * zoom);
 
-  const today = new Date();
-  const isCurrentMonth =
-    today.getFullYear() === year && today.getMonth() === currentDate.getMonth();
-  const todayDateNum = today.getDate();
+  const prevMonthDate = useMemo(() => addMonthsSafe(currentDate, -1), [currentDate]);
+  const nextMonthDate = useMemo(() => addMonthsSafe(currentDate, 1), [currentDate]);
 
-  // Generate days array
-  const days = Array.from({ length: daysInMonth }, (_, i) => {
-    return new Date(year, month - 1, i + 1);
-  });
+  // Touch gesture state references
+  const startXRef = useRef<number | null>(null);
+  const startYRef = useRef<number | null>(null);
+  const startTimeRef = useRef<number>(0);
+  const isMovedRef = useRef<boolean>(false);
+  const isHorizontalSwipeRef = useRef<boolean>(false);
+  const isVerticalScrollRef = useRef<boolean>(false);
+  const directionLockedRef = useRef<boolean>(false);
+  const isAnimatingRef = useRef<boolean>(false);
+
+  const handleScroll = useCallback(() => {
+    suppressNextClicks(220);
+  }, []);
+
+  const handleTouchStart = useCallback(
+    (e: React.TouchEvent) => {
+      if (isAnimatingRef.current) return;
+      if (e.touches.length > 1) {
+        // Multi-touch: allow pinch zoom to take over
+        startXRef.current = null;
+        startYRef.current = null;
+        return;
+      }
+      if (zoom > 1.15) {
+        // Zoomed in: lock horizontal swipe to allow uninterrupted panning
+        startXRef.current = null;
+        startYRef.current = null;
+        return;
+      }
+
+      startXRef.current = e.touches[0].clientX;
+      startYRef.current = e.touches[0].clientY;
+      startTimeRef.current = Date.now();
+      isMovedRef.current = false;
+      isHorizontalSwipeRef.current = false;
+      isVerticalScrollRef.current = false;
+      directionLockedRef.current = false;
+
+      if (trackRef.current) {
+        trackRef.current.style.transition = 'none';
+      }
+    },
+    [zoom]
+  );
+
+  const handleTouchMove = useCallback((e: React.TouchEvent) => {
+    if (isAnimatingRef.current) return;
+    if (startXRef.current === null || startYRef.current === null) return;
+    if (e.touches.length > 1) return;
+    if (isVerticalScrollRef.current) return;
+
+    const currentX = e.touches[0].clientX;
+    const currentY = e.touches[0].clientY;
+    const dx = currentX - startXRef.current;
+    const dy = currentY - startYRef.current;
+    const absDx = Math.abs(dx);
+    const absDy = Math.abs(dy);
+
+    // Direction locking during early movement (8px to 12px)
+    if (!directionLockedRef.current && (absDx >= 8 || absDy >= 8)) {
+      if (absDy >= absDx * 1.3) {
+        // Clear vertical scroll -> Lock out horizontal swipe
+        isVerticalScrollRef.current = true;
+        directionLockedRef.current = true;
+        return;
+      } else if (absDx >= absDy * 1.1 && absDx >= 8) {
+        // Clear horizontal swipe -> Lock in continuous carousel swipe
+        isHorizontalSwipeRef.current = true;
+        directionLockedRef.current = true;
+        suppressNextClicks(350);
+      }
+    }
+
+    if (isHorizontalSwipeRef.current && !isVerticalScrollRef.current) {
+      isMovedRef.current = true;
+      suppressNextClicks(350);
+
+      // Real-time finger tracking: adjacent month slides into view directly with finger
+      if (trackRef.current) {
+        trackRef.current.style.transform = `translateX(${dx}px)`;
+      }
+    }
+  }, []);
+
+  const handleTouchEnd = useCallback(
+    (e: React.TouchEvent) => {
+      if (isAnimatingRef.current) return;
+      if (startXRef.current === null || startYRef.current === null) {
+        startXRef.current = null;
+        startYRef.current = null;
+        return;
+      }
+
+      if (!isHorizontalSwipeRef.current || !isMovedRef.current) {
+        if (isMovedRef.current) {
+          suppressNextClicks(250);
+        }
+        startXRef.current = null;
+        startYRef.current = null;
+        return;
+      }
+
+      const endX = e.changedTouches[0].clientX;
+      const dx = endX - startXRef.current;
+      const absDx = Math.abs(dx);
+      const duration = Date.now() - startTimeRef.current;
+      const velocity = absDx / Math.max(1, duration);
+      const containerWidth = containerRef.current?.clientWidth || window.innerWidth;
+
+      // Dual condition per user preference:
+      // 1. サクサクめくれる軽め (Flick): quick flick (velocity >= 0.35 px/ms, distance >= 32px within 300ms)
+      const isQuickFlick = duration <= 300 && velocity >= 0.35 && absDx >= 32;
+      // 2. 誤めくり防止の標準 (Deliberate Drag): dragged >= 22% of container width (approx 80px)
+      const isDeliberateDrag = absDx >= Math.min(100, containerWidth * 0.22);
+
+      const shouldSwitch = isQuickFlick || isDeliberateDrag;
+
+      if (shouldSwitch && trackRef.current) {
+        isAnimatingRef.current = true;
+        suppressNextClicks(450);
+        triggerHaptic('light');
+
+        const isNext = dx < 0;
+        const targetTranslate = isNext ? -containerWidth : containerWidth;
+
+        trackRef.current.style.transition = 'transform 0.22s cubic-bezier(0.16, 1, 0.3, 1)';
+        trackRef.current.style.transform = `translateX(${targetTranslate}px)`;
+
+        setTimeout(() => {
+          if (trackRef.current) {
+            trackRef.current.style.transition = 'none';
+            trackRef.current.style.transform = 'translateX(0px)';
+          }
+          if (isNext) {
+            onNextMonth();
+          } else {
+            onPrevMonth();
+          }
+          isAnimatingRef.current = false;
+        }, 220);
+      } else if (trackRef.current) {
+        // Bounce back to current month
+        trackRef.current.style.transition = 'transform 0.20s ease-out';
+        trackRef.current.style.transform = 'translateX(0px)';
+      }
+
+      startXRef.current = null;
+      startYRef.current = null;
+      isMovedRef.current = false;
+      isHorizontalSwipeRef.current = false;
+      isVerticalScrollRef.current = false;
+      directionLockedRef.current = false;
+    },
+    [onNextMonth, onPrevMonth]
+  );
+
+  const handleTouchCancel = useCallback(() => {
+    if (trackRef.current && isHorizontalSwipeRef.current) {
+      trackRef.current.style.transition = 'transform 0.20s ease-out';
+      trackRef.current.style.transform = 'translateX(0px)';
+    }
+    startXRef.current = null;
+    startYRef.current = null;
+    isMovedRef.current = false;
+    isHorizontalSwipeRef.current = false;
+    isVerticalScrollRef.current = false;
+    directionLockedRef.current = false;
+  }, []);
 
   return (
     <div
@@ -99,118 +331,60 @@ export const VerticalView: React.FC<VerticalViewProps> = ({
         containerRef.current = el;
         pinchRef.current = el;
       }}
-      onTouchStart={onTouchStart}
-      onTouchMove={onTouchMove}
-      onTouchEnd={onTouchEnd}
-      onTouchCancel={onTouchCancel}
-      onScroll={handleScroll}
-      className="relative flex-1 w-full h-full overflow-y-auto overflow-x-hidden select-none bg-white dark:bg-slate-900"
+      onTouchStart={handleTouchStart}
+      onTouchMove={handleTouchMove}
+      onTouchEnd={handleTouchEnd}
+      onTouchCancel={handleTouchCancel}
+      className="relative flex-1 w-full h-full overflow-hidden select-none bg-white dark:bg-slate-900"
     >
-      <div className="relative min-w-full pb-0">
-        {/* Multi-day arrow SVG layer */}
-        <MultiDayArrowCanvas
-          events={filteredEvents}
-          year={year}
-          month={month}
-          daysInMonth={daysInMonth}
-          rowHeight={effectiveRowHeight}
-          arrowSettings={arrowSettings}
-          onEventClick={onEventClick}
-        />
-
-        {/* Day rows list */}
-        {days.map((date) => {
-          const dayNum = date.getDate();
-          const isToday = isCurrentMonth && dayNum === todayDateNum;
-          const dateStr = formatLocalDate(date);
-
-          // Find events for this day
-          const dayEvents = filteredEvents.filter((e) => isEventOnDate(e, dateStr));
-
-          // Check if a multi-day arrow is passing through this day (strictly day 2 to end)
-          const hasArrowPassing = filteredEvents.some((e) => {
-            if (!isMultiDayEvent(e)) return false;
-            const startStr = getEventStartDateStr(e);
-            const endStr = getEventEndDateInclusiveStr(e);
-            if (!startStr || !endStr) return false;
-            return dateStr > startStr && dateStr <= endStr;
-          });
-
-          return (
-            <VerticalDayRow
-              key={dateStr}
-              date={date}
-              events={dayEvents}
-              rowHeight={effectiveRowHeight}
-              isToday={isToday}
-              hasArrowPassing={hasArrowPassing}
-              isDraggable={true}
-              onDateClick={onDateClick}
-              onEventClick={onEventClick}
-            />
-          );
-        })}
-      </div>
-
-      {/* Floating Zoom Controls: Collapsible & Non-intrusive */}
-      {showZoomControls && (
-        <div className="fixed right-2.5 bottom-16 sm:bottom-18 z-20">
-          {!isZoomExpanded ? (
-            <button
-              type="button"
-              onClick={() => setIsZoomExpanded(true)}
-              className="flex items-center gap-1 px-2.5 py-1.5 rounded-full bg-white/75 dark:bg-slate-800/75 hover:bg-white/95 dark:hover:bg-slate-800/95 backdrop-blur-md shadow-md border border-slate-200/80 dark:border-slate-700/80 text-slate-500 hover:text-slate-800 dark:hover:text-slate-200 opacity-60 hover:opacity-100 transition active:scale-95 cursor-pointer text-xs"
-              title="拡大・縮小ツールを開く"
-            >
-              <ZoomIn className="w-3.5 h-3.5" />
-              {zoom > 1.05 && (
-                <span className="text-[10px] font-bold text-blue-600 dark:text-blue-400 tabular-nums">
-                  {Math.round(zoom * 100)}%
-                </span>
-              )}
-            </button>
-          ) : (
-            <div className="flex items-center gap-1 bg-white/95 dark:bg-slate-800/95 backdrop-blur-md px-1.5 py-1 rounded-2xl shadow-xl border border-slate-200 dark:border-slate-700 animate-in fade-in slide-in-from-bottom-2 duration-150">
-              <button
-                type="button"
-                onClick={zoomIn}
-                className="p-1.5 text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-xl transition active:scale-90"
-                title="拡大"
-              >
-                <ZoomIn className="w-4 h-4" />
-              </button>
-              {zoom > 1.05 && (
-                <button
-                  type="button"
-                  onClick={resetZoom}
-                  className="p-1.5 text-blue-600 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-slate-700 rounded-xl transition active:scale-90"
-                  title="全体表示にリセット"
-                >
-                  <RotateCcw className="w-4 h-4" />
-                </button>
-              )}
-              <button
-                type="button"
-                onClick={zoomOut}
-                disabled={zoom <= 1.0}
-                className="p-1.5 text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-xl transition active:scale-90 disabled:opacity-30"
-                title="縮小"
-              >
-                <ZoomOut className="w-4 h-4" />
-              </button>
-              <div className="w-[1px] h-4 bg-slate-200 dark:bg-slate-700 mx-0.5" />
-              <button
-                type="button"
-                onClick={() => setIsZoomExpanded(false)}
-                className="p-1 text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 rounded-lg transition active:scale-90"
-                title="閉じる"
-              >
-                <X className="w-3.5 h-3.5" />
-              </button>
-            </div>
-          )}
+      {/* Continuous 3-Panel Carousel Slider Track */}
+      <div
+        ref={trackRef}
+        className="w-full h-full relative"
+        style={{
+          transform: 'translateX(0px)',
+          willChange: 'transform',
+        }}
+      >
+        {/* Panel -1: Previous Month (positioned just to the left) */}
+        <div className="absolute top-0 bottom-0 left-[-100%] w-full h-full">
+          <VerticalMonthPanel
+            targetDate={prevMonthDate}
+            effectiveRowHeight={effectiveRowHeight}
+            filteredEvents={filteredEvents}
+            arrowSettings={arrowSettings}
+            onDateClick={onDateClick}
+            onEventClick={onEventClick}
+            onScroll={handleScroll}
+          />
         </div>
-      )}
+
+        {/* Panel 0: Current Month (active center screen) */}
+        <div className="absolute top-0 bottom-0 left-0 w-full h-full">
+          <VerticalMonthPanel
+            targetDate={currentDate}
+            effectiveRowHeight={effectiveRowHeight}
+            filteredEvents={filteredEvents}
+            arrowSettings={arrowSettings}
+            onDateClick={onDateClick}
+            onEventClick={onEventClick}
+            onScroll={handleScroll}
+          />
+        </div>
+
+        {/* Panel +1: Next Month (positioned just to the right) */}
+        <div className="absolute top-0 bottom-0 left-[100%] w-full h-full">
+          <VerticalMonthPanel
+            targetDate={nextMonthDate}
+            effectiveRowHeight={effectiveRowHeight}
+            filteredEvents={filteredEvents}
+            arrowSettings={arrowSettings}
+            onDateClick={onDateClick}
+            onEventClick={onEventClick}
+            onScroll={handleScroll}
+          />
+        </div>
+      </div>
     </div>
   );
 };
