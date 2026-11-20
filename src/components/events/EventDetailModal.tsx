@@ -29,6 +29,7 @@ import {
   Calendar,
   Palette,
   Type,
+  ChevronDown,
 } from 'lucide-react';
 import {
   TEXT_COLOR_PRESETS,
@@ -543,95 +544,141 @@ export const EventDetailModal: React.FC<EventDetailModalProps> = ({
                   </label>
                 </div>
 
-                {/* Start & End Dual Rows */}
-                <div className="space-y-1.5">
-                  {/* Start Row */}
-                  <div
-                    className={`flex items-center justify-between p-2 rounded-xl transition-all ${
-                      activeTimePicker === 'start'
-                        ? 'bg-white dark:bg-slate-800 shadow-xs ring-1 ring-blue-500'
-                        : 'bg-white/80 dark:bg-slate-800/60 border border-slate-200/50 dark:border-slate-700/50'
-                    }`}
-                  >
-                    <span className="text-xs font-bold text-slate-600 dark:text-slate-300 w-12 shrink-0 flex items-center gap-1">
-                      <Calendar className="w-3.5 h-3.5 text-blue-500" />
-                      開始
-                    </span>
-                    <div className="flex items-center gap-1.5 flex-1 justify-end">
-                      <input
-                        type="date"
-                        required
-                        value={formStartDate}
-                        onChange={(e) => handleStartDateChange(e.target.value)}
-                        className="px-2 py-1 text-xs font-semibold rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 text-slate-800 dark:text-slate-200 focus:outline-none"
-                      />
-                      {!formIsAllDay && (
-                        <button
-                          type="button"
-                          onClick={() =>
-                            setActiveTimePicker(activeTimePicker === 'start' ? null : 'start')
-                          }
-                          className={`px-2.5 py-1 text-xs font-bold rounded-lg border transition active:scale-95 flex items-center gap-1 ${
-                            activeTimePicker === 'start'
-                              ? 'bg-blue-600 text-white border-blue-600 shadow-xs'
-                              : 'bg-slate-100 dark:bg-slate-700 text-blue-600 dark:text-blue-400 border-slate-200 dark:border-slate-600 hover:bg-slate-200'
-                          }`}
-                        >
-                          {`${startHour.toString().padStart(2, '0')}:${startMinute
-                            .toString()
-                            .padStart(2, '0')}`}
-                        </button>
-                      )}
+                {/* Start & End Date & Time Section */}
+                <div className="space-y-2">
+                  {/* 1. Start Row & Inline Picker */}
+                  <div className="rounded-xl border border-slate-200/80 dark:border-slate-700/80 bg-white/90 dark:bg-slate-800/80 overflow-hidden shadow-2xs">
+                    <div className="flex items-center justify-between p-2">
+                      <span className="text-xs font-bold text-slate-700 dark:text-slate-200 w-12 shrink-0 flex items-center gap-1">
+                        <Calendar className="w-3.5 h-3.5 text-blue-500" />
+                        開始
+                      </span>
+                      <div className="flex items-center gap-1.5 justify-end">
+                        <input
+                          type="date"
+                          required
+                          value={formStartDate}
+                          onChange={(e) => handleStartDateChange(e.target.value)}
+                          className="px-2 py-1 text-xs font-semibold rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 text-slate-800 dark:text-slate-200 focus:outline-none"
+                        />
+                        {!formIsAllDay && (
+                          <button
+                            type="button"
+                            onClick={() =>
+                              setActiveTimePicker(activeTimePicker === 'start' ? null : 'start')
+                            }
+                            className={`px-2.5 py-1 text-xs font-bold rounded-lg border transition active:scale-95 flex items-center gap-1 ${
+                              activeTimePicker === 'start'
+                                ? 'bg-blue-600 text-white border-blue-600 shadow-xs'
+                                : 'bg-blue-50 dark:bg-blue-950/60 text-blue-600 dark:text-blue-400 border-blue-200 dark:border-blue-800 hover:bg-blue-100'
+                            }`}
+                          >
+                            <span>{`${startHour.toString().padStart(2, '0')}:${startMinute
+                              .toString()
+                              .padStart(2, '0')}`}</span>
+                            <ChevronDown
+                              className={`w-3 h-3 transition-transform ${
+                                activeTimePicker === 'start' ? 'rotate-180' : ''
+                              }`}
+                            />
+                          </button>
+                        )}
+                      </div>
                     </div>
+
+                    {/* Inline Start Drum Time Picker */}
+                    {!formIsAllDay && activeTimePicker === 'start' && (
+                      <div className="p-2.5 bg-slate-50 dark:bg-slate-900/60 border-t border-slate-200/80 dark:border-slate-700/80 space-y-1.5 animate-in fade-in">
+                        <div className="flex items-center justify-between px-1 text-[11px] font-bold text-blue-600 dark:text-blue-400">
+                          <span>開始時刻を設定</span>
+                          <button
+                            type="button"
+                            onClick={() => setActiveTimePicker(null)}
+                            className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 font-semibold"
+                          >
+                            完了
+                          </button>
+                        </div>
+                        <DrumTimePicker
+                          hour={startHour}
+                          minute={startMinute}
+                          onChange={handleStartTimeChange}
+                        />
+                      </div>
+                    )}
                   </div>
 
-                  {/* End Row */}
-                  <div
-                    className={`flex items-center justify-between p-2 rounded-xl transition-all ${
-                      activeTimePicker === 'end'
-                        ? 'bg-white dark:bg-slate-800 shadow-xs ring-1 ring-blue-500'
-                        : 'bg-white/80 dark:bg-slate-800/60 border border-slate-200/50 dark:border-slate-700/50'
-                    }`}
-                  >
-                    <span className="text-xs font-bold text-slate-600 dark:text-slate-300 w-12 shrink-0 flex items-center gap-1">
-                      <Calendar className="w-3.5 h-3.5 text-slate-400" />
-                      終了
-                    </span>
-                    <div className="flex items-center gap-1.5 flex-1 justify-end">
-                      <input
-                        type="date"
-                        required
-                        value={formEndDate}
-                        min={formStartDate}
-                        onChange={(e) => handleEndDateChange(e.target.value)}
-                        className="px-2 py-1 text-xs font-semibold rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 text-slate-800 dark:text-slate-200 focus:outline-none"
-                      />
-                      {!formIsAllDay && (
-                        <button
-                          type="button"
-                          onClick={() =>
-                            setActiveTimePicker(activeTimePicker === 'end' ? null : 'end')
-                          }
-                          className={`px-2.5 py-1 text-xs font-bold rounded-lg border transition active:scale-95 flex items-center gap-1 ${
-                            activeTimePicker === 'end'
-                              ? 'bg-blue-600 text-white border-blue-600 shadow-xs'
-                              : 'bg-slate-100 dark:bg-slate-700 text-blue-600 dark:text-blue-400 border-slate-200 dark:border-slate-600 hover:bg-slate-200'
-                          }`}
-                        >
-                          {`${endHour.toString().padStart(2, '0')}:${endMinute
-                            .toString()
-                            .padStart(2, '0')}`}
-                        </button>
-                      )}
+                  {/* 2. End Row & Inline Picker */}
+                  <div className="rounded-xl border border-slate-200/80 dark:border-slate-700/80 bg-white/90 dark:bg-slate-800/80 overflow-hidden shadow-2xs">
+                    <div className="flex items-center justify-between p-2">
+                      <div className="flex items-center gap-1.5 min-w-0">
+                        <span className="text-xs font-bold text-slate-700 dark:text-slate-200 w-12 shrink-0 flex items-center gap-1">
+                          <Calendar className="w-3.5 h-3.5 text-slate-400" />
+                          終了
+                        </span>
+                      </div>
+                      <div className="flex items-center gap-1.5 justify-end">
+                        <input
+                          type="date"
+                          required
+                          value={formEndDate}
+                          min={formStartDate}
+                          onChange={(e) => handleEndDateChange(e.target.value)}
+                          className="px-2 py-1 text-xs font-semibold rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 text-slate-800 dark:text-slate-200 focus:outline-none"
+                        />
+                        {!formIsAllDay && (
+                          <button
+                            type="button"
+                            onClick={() =>
+                              setActiveTimePicker(activeTimePicker === 'end' ? null : 'end')
+                            }
+                            className={`px-2.5 py-1 text-xs font-bold rounded-lg border transition active:scale-95 flex items-center gap-1 ${
+                              activeTimePicker === 'end'
+                                ? 'bg-blue-600 text-white border-blue-600 shadow-xs'
+                                : 'bg-blue-50 dark:bg-blue-950/60 text-blue-600 dark:text-blue-400 border-blue-200 dark:border-blue-800 hover:bg-blue-100'
+                            }`}
+                          >
+                            <span>{`${endHour.toString().padStart(2, '0')}:${endMinute
+                              .toString()
+                              .padStart(2, '0')}`}</span>
+                            <ChevronDown
+                              className={`w-3 h-3 transition-transform ${
+                                activeTimePicker === 'end' ? 'rotate-180' : ''
+                              }`}
+                            />
+                          </button>
+                        )}
+                      </div>
                     </div>
+
+                    {/* Inline End Drum Time Picker */}
+                    {!formIsAllDay && activeTimePicker === 'end' && (
+                      <div className="p-2.5 bg-slate-50 dark:bg-slate-900/60 border-t border-slate-200/80 dark:border-slate-700/80 space-y-1.5 animate-in fade-in">
+                        <div className="flex items-center justify-between px-1 text-[11px] font-bold text-blue-600 dark:text-blue-400">
+                          <span>終了時刻を設定</span>
+                          <button
+                            type="button"
+                            onClick={() => setActiveTimePicker(null)}
+                            className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 font-semibold"
+                          >
+                            完了
+                          </button>
+                        </div>
+                        <DrumTimePicker
+                          hour={endHour}
+                          minute={endMinute}
+                          onChange={handleEndTimeChange}
+                        />
+                      </div>
+                    )}
                   </div>
                 </div>
 
-                {/* Quick Duration Shortcuts (Only when timed) */}
+                {/* Quick Duration Shortcuts directly under End Row */}
                 {!formIsAllDay && (
-                  <div className="flex items-center gap-1.5 pt-0.5 px-0.5">
+                  <div className="flex items-center gap-1.5 pt-0.5 px-1">
                     <span className="text-[10px] text-slate-400 font-medium shrink-0">
-                      ワンタップ時間設定:
+                      終了時間の延長:
                     </span>
                     <div className="flex flex-wrap items-center gap-1 flex-1">
                       {[15, 30, 60, 120].map((mins) => (
@@ -645,61 +692,6 @@ export const EventDetailModal: React.FC<EventDetailModalProps> = ({
                         </button>
                       ))}
                     </div>
-                  </div>
-                )}
-
-                {/* Collapsible Smart Drum Picker */}
-                {!formIsAllDay && activeTimePicker && (
-                  <div className="pt-2 border-t border-slate-200/80 dark:border-slate-700/80 space-y-1.5 animate-in fade-in">
-                    <div className="flex items-center justify-between px-1">
-                      <div className="flex items-center gap-1.5">
-                        <span className="text-[11px] font-bold text-blue-600 dark:text-blue-400">
-                          {activeTimePicker === 'start' ? '開始時刻' : '終了時刻'}
-                        </span>
-                        <div className="flex items-center gap-1 bg-slate-200 dark:bg-slate-700 p-0.5 rounded-lg text-[10px] font-semibold">
-                          <button
-                            type="button"
-                            onClick={() => setActiveTimePicker('start')}
-                            className={`px-1.5 py-0.5 rounded ${
-                              activeTimePicker === 'start'
-                                ? 'bg-white dark:bg-slate-800 text-blue-600 shadow-2xs'
-                                : 'text-slate-500'
-                            }`}
-                          >
-                            開始
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => setActiveTimePicker('end')}
-                            className={`px-1.5 py-0.5 rounded ${
-                              activeTimePicker === 'end'
-                                ? 'bg-white dark:bg-slate-800 text-blue-600 shadow-2xs'
-                                : 'text-slate-500'
-                            }`}
-                          >
-                            終了
-                          </button>
-                        </div>
-                      </div>
-
-                      <button
-                        type="button"
-                        onClick={() => setActiveTimePicker(null)}
-                        className="text-[11px] text-blue-600 dark:text-blue-400 font-bold px-2 py-0.5 rounded hover:bg-blue-50 dark:hover:bg-blue-950/40 transition"
-                      >
-                        閉じる
-                      </button>
-                    </div>
-
-                    <DrumTimePicker
-                      hour={activeTimePicker === 'start' ? startHour : endHour}
-                      minute={activeTimePicker === 'start' ? startMinute : endMinute}
-                      onChange={
-                        activeTimePicker === 'start'
-                          ? handleStartTimeChange
-                          : handleEndTimeChange
-                      }
-                    />
                   </div>
                 )}
               </div>
