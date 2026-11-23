@@ -350,7 +350,8 @@ export const EventDetailModal: React.FC<EventDetailModalProps> = ({
 
   const handleDeleteCurrent = () => {
     if (editingEvent) {
-      const ok = window.confirm(`「${editingEvent.summary || 'この予定'}」を削除してもよろしいですか？`);
+      const title = editingEvent.summary ? `「${editingEvent.summary}」` : 'この予定';
+      const ok = window.confirm(`${title}を削除してもよろしいですか？`);
       if (!ok) return;
       deleteEvent(editingEvent.id);
       setEditingEvent(null);
@@ -979,7 +980,7 @@ export const EventDetailModal: React.FC<EventDetailModalProps> = ({
                             {ev.summary}
                           </h4>
                         </div>
-                        {/* Action Buttons: Copy & Edit */}
+                        {/* Action Buttons: Copy, Edit & Delete */}
                         <div className="flex items-center gap-1">
                           <button
                             type="button"
@@ -999,6 +1000,20 @@ export const EventDetailModal: React.FC<EventDetailModalProps> = ({
                             title="予定を編集"
                           >
                             <Edit3 className="w-4 h-4" />
+                          </button>
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              const title = ev.summary ? `「${ev.summary}」` : 'この予定';
+                              if (window.confirm(`${title}を削除してもよろしいですか？`)) {
+                                deleteEvent(ev.id);
+                              }
+                            }}
+                            className="p-1.5 rounded-lg text-slate-400 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-slate-700 active:scale-90 transition cursor-pointer"
+                            title="予定を削除"
+                          >
+                            <Trash2 className="w-4 h-4" />
                           </button>
                         </div>
                       </div>

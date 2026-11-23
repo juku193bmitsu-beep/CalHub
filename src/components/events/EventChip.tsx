@@ -102,8 +102,12 @@ export const EventChip: React.FC<EventChipProps> = ({
 
   const handleDelete = (e: React.MouseEvent) => {
     e.stopPropagation();
-    deleteEvent(event.id);
     setShowMenu(false);
+    const title = event.summary ? `「${event.summary}」` : 'この予定';
+    if (!window.confirm(`${title}を削除してもよろしいですか？`)) {
+      return;
+    }
+    deleteEvent(event.id);
   };
 
   const handleEdit = (e: React.MouseEvent) => {
