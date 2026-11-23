@@ -8,6 +8,7 @@ import { getJapaneseHoliday } from '../../constants/holidays';
 import { DrumTimePicker } from '../pickers/DrumTimePicker';
 import {
   formatLocalDate,
+  parseLocalDate,
   isEventOnDate,
   getEventStartDateStr,
   getEventEndDateInclusiveStr,
@@ -363,10 +364,23 @@ export const EventDetailModal: React.FC<EventDetailModalProps> = ({
     const targetDateStr = formatLocalDate(currentDate);
 
     if (copiedEvent.isAllDay || copiedEvent.start.date) {
+      const oldStartDate = copiedEvent.start.date || '';
+      const oldEndDate = copiedEvent.end.date || oldStartDate;
+      let daysSpan = 1;
+      if (oldStartDate && oldEndDate && oldEndDate > oldStartDate) {
+        const s = parseLocalDate(oldStartDate);
+        const e = parseLocalDate(oldEndDate);
+        daysSpan = Math.max(1, Math.round((e.getTime() - s.getTime()) / (1000 * 60 * 60 * 24)));
+      }
+      const targetStartD = parseLocalDate(targetDateStr);
+      const targetEndD = new Date(targetStartD);
+      targetEndD.setDate(targetEndD.getDate() + daysSpan);
+      const nextEndStr = formatLocalDate(targetEndD);
+
       addEvent({
         ...copiedEvent,
         start: { date: targetDateStr },
-        end: { date: targetDateStr },
+        end: { date: nextEndStr },
       });
     } else {
       const oldStart = new Date(copiedEvent.start.dateTime || '');

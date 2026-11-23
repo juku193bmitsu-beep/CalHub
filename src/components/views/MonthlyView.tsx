@@ -1,4 +1,5 @@
 import React, { useState, useMemo, useRef, useEffect, useCallback } from 'react';
+import { ChevronLeft, ChevronRight } from 'lucide-react';
 import { useEvents } from '../../contexts/EventContext';
 import { useCalendar } from '../../contexts/CalendarContext';
 import { CalendarEvent } from '../../types/calendar';
@@ -342,11 +343,11 @@ const MonthGrid: React.FC<MonthGridProps> = React.memo(({
                       title={event.summary}
                     >
                       {!isStartsThisWeek && (
-                        <span className="mr-0.5 text-[9px] opacity-75">◀</span>
+                        <ChevronLeft className="w-2.5 h-2.5 mr-0.5 shrink-0 opacity-75" strokeWidth={2.5} />
                       )}
                       <span className="truncate">{event.summary || '(予定なし)'}</span>
                       {!isEndsThisWeek && (
-                        <span className="ml-auto pl-0.5 text-[9px] opacity-75">▶</span>
+                        <ChevronRight className="w-2.5 h-2.5 ml-auto pl-0.5 shrink-0 opacity-75" strokeWidth={2.5} />
                       )}
                     </div>
                   );
@@ -378,11 +379,11 @@ const MonthGrid: React.FC<MonthGridProps> = React.memo(({
                       title={event.summary}
                     >
                       {!isStartsThisWeek && isSpanOrAllDay && (
-                        <span className="mr-0.5 text-[9px] opacity-75">◀</span>
+                        <ChevronLeft className="w-2.5 h-2.5 mr-0.5 shrink-0 opacity-75" strokeWidth={2.5} />
                       )}
                       <span className="truncate">{event.summary || '(予定なし)'}</span>
                       {!isEndsThisWeek && isSpanOrAllDay && (
-                        <span className="ml-auto pl-0.5 text-[9px] opacity-75">▶</span>
+                        <ChevronRight className="w-2.5 h-2.5 ml-auto pl-0.5 shrink-0 opacity-75" strokeWidth={2.5} />
                       )}
                     </div>
                   );
@@ -417,11 +418,11 @@ const MonthGrid: React.FC<MonthGridProps> = React.memo(({
                       style={{ backgroundColor: rawColor }}
                     />
                     {!isStartsThisWeek && isSpanOrAllDay && (
-                      <span className="mr-0.5 text-[9px] opacity-75">◀</span>
+                      <ChevronLeft className="w-2.5 h-2.5 mr-0.5 shrink-0 opacity-75" strokeWidth={2.5} />
                     )}
                     <span className="truncate">{event.summary || '(予定なし)'}</span>
                     {!isEndsThisWeek && isSpanOrAllDay && (
-                      <span className="ml-auto pl-0.5 text-[9px] opacity-75">▶</span>
+                      <ChevronRight className="w-2.5 h-2.5 ml-auto pl-0.5 shrink-0 opacity-75" strokeWidth={2.5} />
                     )}
                   </div>
                 );

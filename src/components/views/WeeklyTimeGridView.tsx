@@ -1,4 +1,5 @@
 import React, { useRef, useEffect, useMemo, useState } from 'react';
+import { ChevronLeft, ChevronRight, MapPin } from 'lucide-react';
 import { useEvents } from '../../contexts/EventContext';
 import { useCalendar } from '../../contexts/CalendarContext';
 import { CalendarEvent } from '../../types/calendar';
@@ -297,9 +298,9 @@ export const WeeklyTimeGridView: React.FC<WeeklyTimeGridViewProps> = ({
                       } ${isEndsThisWeek ? 'rounded-r-md' : 'rounded-r-none'}`}
                       title={event.summary}
                     >
-                      {!isStartsThisWeek && <span className="mr-0.5 text-[9px] opacity-75">◀</span>}
+                      {!isStartsThisWeek && <ChevronLeft className="w-2.5 h-2.5 mr-0.5 shrink-0 opacity-75" strokeWidth={2.5} />}
                       <span className="truncate">{event.summary || '(予定なし)'}</span>
-                      {!isEndsThisWeek && <span className="ml-auto pl-0.5 text-[9px] opacity-75">▶</span>}
+                      {!isEndsThisWeek && <ChevronRight className="w-2.5 h-2.5 ml-auto pl-0.5 shrink-0 opacity-75" strokeWidth={2.5} />}
                     </div>
                   );
                 })}
@@ -429,8 +430,9 @@ export const WeeklyTimeGridView: React.FC<WeeklyTimeGridViewProps> = ({
                         </div>
                       )}
                       {heightPx >= 46 && ev.location && (
-                        <div className="text-[9px] text-slate-400 dark:text-slate-500 truncate mt-0.5">
-                          📍 {ev.location}
+                        <div className="text-[9px] text-slate-400 dark:text-slate-500 truncate mt-0.5 flex items-center gap-0.5">
+                          <MapPin className="w-2.5 h-2.5 shrink-0" />
+                          <span className="truncate">{ev.location}</span>
                         </div>
                       )}
                     </div>

@@ -3,6 +3,26 @@ import { GOOGLE_EVENT_COLORS } from '../constants/googlePalette';
 
 const BASE_URL = 'https://www.googleapis.com/calendar/v3';
 
+/**
+ * YYYY-MM-DD 形式の日付文字列に指定日数を加算
+ */
+function addDaysToDateStr(dateStr: string, days: number): string {
+  const parts = dateStr.split('-');
+  if (parts.length === 3) {
+    const y = parseInt(parts[0], 10);
+    const m = parseInt(parts[1], 10);
+    const d = parseInt(parts[2], 10);
+    if (!isNaN(y) && !isNaN(m) && !isNaN(d)) {
+      const dt = new Date(y, m - 1, d + days);
+      const cy = dt.getFullYear();
+      const cm = String(dt.getMonth() + 1).padStart(2, '0');
+      const cd = String(dt.getDate()).padStart(2, '0');
+      return `${cy}-${cm}-${cd}`;
+    }
+  }
+  return dateStr;
+}
+
 export class CalendarApiService {
   private static async request<T>(
     endpoint: string,
@@ -87,17 +107,13 @@ export class CalendarApiService {
     do {
       try {
         const params = new URLSearchParams();
-        if (pageToken) {
-          // Google Calendar API: when pageToken is passed, pass only pageToken to avoid parameter conflicts
-          params.set('pageToken', pageToken);
-        } else {
-          params.set('singleEvents', 'true');
-          params.set('orderBy', 'startTime');
-          params.set('maxResults', '2500'); // Maximum allowed by Google Calendar API (10x faster than 250)
-          if (timeMin) params.set('timeMin', timeMin);
-          if (timeMax) params.set('timeMax', timeMax);
-          if (query) params.set('q', query);
-        }
+        params.set('singleEvents', 'true');
+        params.set('orderBy', 'startTime');
+        params.set('maxResults', '2500'); // Maximum allowed by Google Calendar API (10x faster than 250)
+        if (timeMin) params.set('timeMin', timeMin);
+        if (timeMax) params.set('timeMax', timeMax);
+        if (query) params.set('q', query);
+        if (pageToken) params.set('pageToken', pageToken);
 
         const data = await this.request<any>(
           `/calendars/${encodedCalId}/events?${params.toString()}`,
@@ -153,22 +169,37 @@ export class CalendarApiService {
     });
   }
 
-  // 3. Create event
+  // 3. Create event（双方向同期：ユーザー指定によりアプリの色はGoogleに反映しないため colorId は含めない）
   public static async insertEvent(
     token: string,
     calendarId: string,
     event: Omit<CalendarEvent, 'id'>
   ): Promise<CalendarEvent> {
     const encodedCalId = encodeURIComponent(calendarId);
+
+    let start = event.start;
+    let end = event.end;
+
+    // 終日イベントの場合、end.date は排他的（翌日）である必要がある
+    if (event.isAllDay || start.date) {
+      const sDate = start.date || '';
+      let eDate = end?.date || sDate;
+      if (!eDate || eDate <= sDate) {
+        eDate = addDaysToDateStr(sDate, 1);
+      }
+      start = { date: sDate };
+      end = { date: eDate };
+    }
+
     const body: any = {
-      summary: event.summary,
-      description: event.description,
-      location: event.location,
-      start: event.start,
-      end: event.end,
+      summary: event.summary || '(タイトルなし)',
+      description: event.description || '',
+      location: event.location || '',
+      start,
+      end,
     };
 
-    if (event.colorId) body.colorId = event.colorId;
+    // ※ユーザー要件: アプリ側の色はGoogleカレンダーへ反映しないため、body.colorId は設定しない
 
     const created = await this.request<any>(
       `/calendars/${encodedCalId}/events`,
@@ -185,7 +216,7 @@ export class CalendarApiService {
     };
   }
 
-  // 4. Update event
+  // 4. Update event（双方向同期：ユーザー指定によりアプリの色はGoogleに反映しないため colorId は含めない）
   public static async patchEvent(
     token: string,
     calendarId: string,
@@ -199,9 +230,26 @@ export class CalendarApiService {
     if (updates.summary !== undefined) body.summary = updates.summary;
     if (updates.description !== undefined) body.description = updates.description;
     if (updates.location !== undefined) body.location = updates.location;
-    if (updates.start !== undefined) body.start = updates.start;
-    if (updates.end !== undefined) body.end = updates.end;
-    if (updates.colorId !== undefined) body.colorId = updates.colorId;
+
+    if (updates.start !== undefined || updates.end !== undefined) {
+      let start = updates.start;
+      let end = updates.end;
+
+      if (updates.isAllDay || start?.date) {
+        const sDate = start?.date || '';
+        let eDate = end?.date || sDate;
+        if (sDate && (!eDate || eDate <= sDate)) {
+          eDate = addDaysToDateStr(sDate, 1);
+        }
+        if (start) start = { ...start, date: sDate };
+        if (end) end = { ...end, date: eDate };
+      }
+
+      if (start !== undefined) body.start = start;
+      if (end !== undefined) body.end = end;
+    }
+
+    // ※ユーザー要件: アプリ側の色はGoogleカレンダーへ反映しないため、body.colorId は設定しない
 
     await this.request(
       `/calendars/${encodedCalId}/events/${encodedEventId}`,

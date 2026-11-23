@@ -28,6 +28,7 @@ import {
   RotateCcw,
   Palette,
   Type,
+  Info,
   ChevronDown,
   ChevronUp,
 } from 'lucide-react';
@@ -75,6 +76,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
   const [activeTab, setActiveTab] = useState<'calendars' | 'google' | 'arrows'>(initialTab);
   const [clientIdInput, setClientIdInput] = useState(googleAuth.getClientId());
   const [isSavedClientNotice, setIsSavedClientNotice] = useState(false);
+  const [dataActionNotice, setDataActionNotice] = useState<string | null>(null);
   const [isLoggingIn, setIsLoggingIn] = useState(false);
   const [loginError, setLoginError] = useState<string | null>(null);
   const [editingCalId, setEditingCalId] = useState<string | null>(null);
@@ -136,14 +138,16 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
   const handleClearDemoData = () => {
     if (window.confirm('現在のすべての予定を消去し、白紙のカレンダーにしますか？（ご自身の予定だけを入力して本番利用したい場合に便利です）')) {
       clearAllEvents();
-      alert('予定をすべて消去しました。新しい予定を入力してご利用ください。');
+      setDataActionNotice('予定をすべて消去しました。新しい予定を入力してご利用ください。');
+      setTimeout(() => setDataActionNotice(null), 3500);
     }
   };
 
   const handleResetDemoData = () => {
     if (window.confirm('初期サンプル予定（出張・レビュー定例・旅行など）を再読み込みしますか？')) {
       resetToMockEvents();
-      alert('サンプル予定を復元しました。');
+      setDataActionNotice('サンプル予定を復元しました。');
+      setTimeout(() => setDataActionNotice(null), 3500);
     }
   };
 
@@ -605,8 +609,9 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                     )}
                   </div>
 
-                  <p className="text-[10px] text-slate-400 dark:text-slate-500 leading-relaxed">
-                    💡 カレンダーをめくると、その年月の予定は自動的にバックグラウンドで即時取得されます。オフラインでも過去・未来の全予定を見たい場合は「一括同期」を実行してください。
+                  <p className="text-[10px] text-slate-400 dark:text-slate-500 leading-relaxed flex items-start gap-1.5">
+                    <Info className="w-3.5 h-3.5 mt-0.5 shrink-0 text-slate-400 dark:text-slate-500" />
+                    <span>カレンダーをめくると、その年月の予定は自動的にバックグラウンドで即時取得されます。オフラインでも過去・未来の全予定を見たい場合は「一括同期」を実行してください。</span>
                   </p>
                 </div>
               </div>
@@ -698,6 +703,12 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                     <span>サンプル復元</span>
                   </button>
                 </div>
+                {dataActionNotice && (
+                  <p className="text-[11px] text-emerald-600 dark:text-emerald-400 font-semibold flex items-center gap-1">
+                    <Check className="w-3.5 h-3.5 shrink-0" />
+                    {dataActionNotice}
+                  </p>
+                )}
               </div>
             </div>
           )}

@@ -3,7 +3,7 @@ import { CalendarEvent } from '../types/calendar';
 import { generateInitialMockEvents } from '../services/mockData';
 import { useCalendar } from './CalendarContext';
 import { CalendarApiService } from '../services/calendarApi';
-import { isEventOnDate } from '../services/dateUtils';
+import { isEventOnDate, formatLocalDate, parseLocalDate } from '../services/dateUtils';
 import { loadEventsFromDb, saveEventsToDb, deleteEventFromDb, clearEventsDb } from '../services/storageDb';
 
 export interface EventStats {
@@ -459,10 +459,24 @@ export const EventProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         if (ev.id !== id) return ev;
 
         if (ev.isAllDay || ev.start.date) {
+          const oldStartDate = ev.start.date || '';
+          const oldEndDate = ev.end.date || oldStartDate;
+          let daysSpan = 1;
+          if (oldStartDate && oldEndDate && oldEndDate > oldStartDate) {
+            const s = parseLocalDate(oldStartDate);
+            const e = parseLocalDate(oldEndDate);
+            daysSpan = Math.max(1, Math.round((e.getTime() - s.getTime()) / (1000 * 60 * 60 * 24)));
+          }
+
+          const targetStartD = parseLocalDate(targetDateStr);
+          const targetEndD = new Date(targetStartD);
+          targetEndD.setDate(targetEndD.getDate() + daysSpan);
+          const nextEndStr = formatLocalDate(targetEndD);
+
           const updated: CalendarEvent = {
             ...ev,
             start: { date: targetDateStr },
-            end: { date: targetDateStr },
+            end: { date: nextEndStr },
           };
           updatedEvent = updated;
           return updated;
