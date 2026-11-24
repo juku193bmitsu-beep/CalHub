@@ -47,6 +47,7 @@ const EventContext = createContext<EventContextType | null>(null);
 
 const STORAGE_KEY_EVENTS = 'calhub_events_v2';
 const STORAGE_KEY_HAS_SYNCED = 'calhub_has_synced_v1';
+const STORAGE_KEY_SYNC_TOKENS = 'calhub_sync_tokens_v1';
 
 export const EventProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const { visibleCalendarIds, authToken, calendars, setAuthToken } = useCalendar();
@@ -279,7 +280,7 @@ export const EventProvider: React.FC<{ children: React.ReactNode }> = ({ childre
 
         for (const cal of activeCalList) {
           try {
-            const calEvents = await CalendarApiService.listEvents(
+            const res = await CalendarApiService.listEvents(
               authToken,
               cal.id,
               timeMin,
@@ -287,8 +288,8 @@ export const EventProvider: React.FC<{ children: React.ReactNode }> = ({ childre
               undefined,
               cal.color
             );
-            if (calEvents.length > 0) {
-              allFetched.push(...calEvents);
+            if (res.events.length > 0) {
+              allFetched.push(...res.events);
             }
           } catch (err: any) {
             if (err?.status === 401 || err?.isAuthError) {
@@ -331,11 +332,9 @@ export const EventProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     [authToken, visibleCalendarIds, calendars, setAuthToken]
   );
 
-  // Sync events from Google Calendar API in sequential polite slices
-  // Slice 1: Current & Future 3 Years (Strictly prioritized from current month to end of 3 years future: e.g. 2026-11 to 2029-12-31)
-  // Slice 2: Recent Past 1-3 Years
-  // Slice 3: Mid Past 4-6 Years
-  // Slice 4: Deep Past 7-10 Years
+  // Sync events from Google Calendar API
+  // Uses Google Incremental Sync (SyncToken) when available for near-instant diff sync & deletion sync.
+  // Falls back to polite sequential slices on initial sync.
   const refreshEvents = useCallback(async () => {
     if (!authToken) {
       setSyncStatusMessage('Googleカレンダーが未接続です。設定から接続してください');
@@ -348,75 +347,63 @@ export const EventProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       isSyncingRef.current = true;
       setIsSyncingEvents(true);
 
-      const now = new Date();
-      const currentYear = now.getFullYear();
-      // Start of current month in local time
-      const startOfCurrentMonth = new Date(currentYear, now.getMonth(), 1);
+      // Load saved syncTokens per calendar
+      let syncTokensMap: Record<string, string> = {};
+      try {
+        const raw = localStorage.getItem(STORAGE_KEY_SYNC_TOKENS);
+        if (raw) syncTokensMap = JSON.parse(raw);
+      } catch {}
 
-      interface TimeSlice {
-        name: string;
-        timeMin: string;
-        timeMax: string;
-      }
+      const activeCalList = Array.from(visibleCalendarIds).map((calId) => ({
+        id: calId,
+        color: calendars.find((c) => c.id === calId)?.backgroundColor,
+      }));
 
-      const slices: TimeSlice[] = [
-        // 1. Current & Future 3 Years (Covers all future planning)
-        {
-          name: `現在〜未来3年（${currentYear}〜${currentYear + 3}年）`,
-          timeMin: startOfCurrentMonth.toISOString(),
-          timeMax: new Date(currentYear + 3, 11, 31, 23, 59, 59).toISOString(),
-        },
-        // 2. Recent Past (Past 1 to 3 years: 2023〜2026)
-        {
-          name: `過去1〜3年（${currentYear - 3}〜${currentYear}年）`,
-          timeMin: new Date(currentYear - 3, 0, 1).toISOString(),
-          timeMax: startOfCurrentMonth.toISOString(),
-        },
-        // 3. Mid Past (Past 4 to 6 years: 2020〜2023)
-        {
-          name: `過去4〜6年（${currentYear - 6}〜${currentYear - 3}年）`,
-          timeMin: new Date(currentYear - 6, 0, 1).toISOString(),
-          timeMax: new Date(currentYear - 3, 0, 1).toISOString(),
-        },
-        // 4. Deep Past (Past 7 to 10 years: 2016〜2020)
-        {
-          name: `過去7〜10年（${currentYear - 10}〜${currentYear - 6}年）`,
-          timeMin: new Date(currentYear - 10, 0, 1).toISOString(),
-          timeMax: new Date(currentYear - 6, 0, 1).toISOString(),
-        },
-      ];
+      // Check if all active calendars already have a syncToken
+      const allHaveTokens = activeCalList.every((c) => !!syncTokensMap[c.id]);
 
-      const activeCalList = Array.from(visibleCalendarIds).map((calId) => {
-        return {
-          id: calId,
-          color: calendars.find((c) => c.id === calId)?.backgroundColor,
-        };
-      });
+      if (allHaveTokens && activeCalList.length > 0) {
+        // === 1. FAST INCREMENTAL SYNC (SyncToken) ===
+        setSyncStatusMessage('Google差分同期中...');
+        let totalChangedCount = 0;
+        let totalDeletedCount = 0;
 
-      let totalSyncedCount = 0;
-
-      for (let s = 0; s < slices.length; s++) {
-        const slice = slices[s];
-        setSyncStatusMessage(`同期中 (${s + 1}/${slices.length}): ${slice.name}`);
-
-        // Fetch each calendar sequentially to guarantee zero 429 rate-limits
         for (const cal of activeCalList) {
           try {
-            const calEvents = await CalendarApiService.listEvents(
+            const savedToken = syncTokensMap[cal.id];
+            const res = await CalendarApiService.listEvents(
               authToken,
               cal.id,
-              slice.timeMin,
-              slice.timeMax,
               undefined,
-              cal.color
+              undefined,
+              undefined,
+              cal.color,
+              savedToken
             );
 
-            if (calEvents.length > 0) {
-              totalSyncedCount += calEvents.length;
+            if (res.nextSyncToken) {
+              syncTokensMap[cal.id] = res.nextSyncToken;
+            }
+
+            // Handle deleted events from Google
+            if (res.deletedEventIds.length > 0) {
+              const delSet = new Set(res.deletedEventIds);
+              totalDeletedCount += delSet.size;
+              setEvents((prev) => {
+                const next = prev.filter((ev) => !delSet.has(ev.id));
+                delSet.forEach((id) => deleteEventFromDb(id));
+                saveEventsToDb(next);
+                return next;
+              });
+            }
+
+            // Handle added / updated events
+            if (res.events.length > 0) {
+              totalChangedCount += res.events.length;
               setEvents((prev) => {
                 const map = new Map<string, CalendarEvent>();
                 prev.forEach((ev) => map.set(ev.id, ev));
-                calEvents.forEach((ev) => {
+                res.events.forEach((ev) => {
                   const existing = map.get(ev.id);
                   map.set(ev.id, {
                     ...ev,
@@ -435,22 +422,116 @@ export const EventProvider: React.FC<{ children: React.ReactNode }> = ({ childre
               setTimeout(() => setSyncStatusMessage(null), 5000);
               return;
             }
-            console.warn(`Calendar ${cal.id} failed in slice ${slice.name}:`, err);
+            console.warn(`[refreshEvents] Incremental sync failed for ${cal.id}:`, err);
           }
-
-          // Gentle pause between calendars
-          await new Promise((r) => setTimeout(r, 60));
+          await new Promise((r) => setTimeout(r, 40));
         }
 
-        // Gentle pause between slices
-        await new Promise((r) => setTimeout(r, 100));
-      }
+        try {
+          localStorage.setItem(STORAGE_KEY_SYNC_TOKENS, JSON.stringify(syncTokensMap));
+        } catch {}
 
-      try {
-        localStorage.setItem(STORAGE_KEY_HAS_SYNCED, 'true');
-      } catch {}
-      setSyncStatusMessage(`同期完了: 過去10年〜未来3年（計 ${totalSyncedCount} 件）`);
-      setTimeout(() => setSyncStatusMessage(null), 3500);
+        const totalDiff = totalChangedCount + totalDeletedCount;
+        setSyncStatusMessage(
+          totalDiff > 0
+            ? `Google差分同期完了（更新 ${totalChangedCount} 件、削除 ${totalDeletedCount} 件）`
+            : 'Googleカレンダーは最新です'
+        );
+        setTimeout(() => setSyncStatusMessage(null), 3000);
+      } else {
+        // === 2. INITIAL FULL SLICES SYNC ===
+        const now = new Date();
+        const currentYear = now.getFullYear();
+        const startOfCurrentMonth = new Date(currentYear, now.getMonth(), 1);
+
+        interface TimeSlice {
+          name: string;
+          timeMin: string;
+          timeMax: string;
+        }
+
+        const slices: TimeSlice[] = [
+          {
+            name: `現在〜未来3年（${currentYear}〜${currentYear + 3}年）`,
+            timeMin: startOfCurrentMonth.toISOString(),
+            timeMax: new Date(currentYear + 3, 11, 31, 23, 59, 59).toISOString(),
+          },
+          {
+            name: `過去1〜3年（${currentYear - 3}〜${currentYear}年）`,
+            timeMin: new Date(currentYear - 3, 0, 1).toISOString(),
+            timeMax: startOfCurrentMonth.toISOString(),
+          },
+          {
+            name: `過去4〜6年（${currentYear - 6}〜${currentYear - 3}年）`,
+            timeMin: new Date(currentYear - 6, 0, 1).toISOString(),
+            timeMax: new Date(currentYear - 3, 0, 1).toISOString(),
+          },
+          {
+            name: `過去7〜10年（${currentYear - 10}〜${currentYear - 6}年）`,
+            timeMin: new Date(currentYear - 10, 0, 1).toISOString(),
+            timeMax: new Date(currentYear - 6, 0, 1).toISOString(),
+          },
+        ];
+
+        let totalSyncedCount = 0;
+
+        for (let s = 0; s < slices.length; s++) {
+          const slice = slices[s];
+          setSyncStatusMessage(`初回同期中 (${s + 1}/${slices.length}): ${slice.name}`);
+
+          for (const cal of activeCalList) {
+            try {
+              const res = await CalendarApiService.listEvents(
+                authToken,
+                cal.id,
+                slice.timeMin,
+                slice.timeMax,
+                undefined,
+                cal.color
+              );
+
+              if (res.nextSyncToken) {
+                syncTokensMap[cal.id] = res.nextSyncToken;
+              }
+
+              if (res.events.length > 0) {
+                totalSyncedCount += res.events.length;
+                setEvents((prev) => {
+                  const map = new Map<string, CalendarEvent>();
+                  prev.forEach((ev) => map.set(ev.id, ev));
+                  res.events.forEach((ev) => {
+                    const existing = map.get(ev.id);
+                    map.set(ev.id, {
+                      ...ev,
+                      ...(existing?.customTextColor ? { customTextColor: existing.customTextColor } : {}),
+                    });
+                  });
+                  const merged = Array.from(map.values());
+                  saveEventsToDb(merged);
+                  return merged;
+                });
+              }
+            } catch (err: any) {
+              if (err?.status === 401 || err?.isAuthError) {
+                setAuthToken(null);
+                setSyncStatusMessage('Google認証の期限が切れました。設定から再接続してください');
+                setTimeout(() => setSyncStatusMessage(null), 5000);
+                return;
+              }
+              console.warn(`Calendar ${cal.id} failed in slice ${slice.name}:`, err);
+            }
+            await new Promise((r) => setTimeout(r, 60));
+          }
+          await new Promise((r) => setTimeout(r, 100));
+        }
+
+        try {
+          localStorage.setItem(STORAGE_KEY_HAS_SYNCED, 'true');
+          localStorage.setItem(STORAGE_KEY_SYNC_TOKENS, JSON.stringify(syncTokensMap));
+        } catch {}
+        setSyncStatusMessage(`同期完了: 過去10年〜未来3年（計 ${totalSyncedCount} 件）`);
+        setTimeout(() => setSyncStatusMessage(null), 3500);
+      }
     } catch (err: any) {
       console.error('Error syncing events from Google:', err);
       if (err?.status === 401 || err?.isAuthError) {
@@ -772,6 +853,7 @@ export const EventProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     try {
       localStorage.removeItem(STORAGE_KEY_EVENTS);
       localStorage.removeItem(STORAGE_KEY_HAS_SYNCED);
+      localStorage.removeItem(STORAGE_KEY_SYNC_TOKENS);
     } catch {}
   };
 

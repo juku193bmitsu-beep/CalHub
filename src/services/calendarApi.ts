@@ -23,6 +23,13 @@ function addDaysToDateStr(dateStr: string, days: number): string {
   return dateStr;
 }
 
+export interface FetchEventsResult {
+  events: CalendarEvent[];
+  deletedEventIds: string[];
+  nextSyncToken?: string;
+  isIncremental: boolean;
+}
+
 export class CalendarApiService {
   private static async request<T>(
     endpoint: string,
@@ -89,29 +96,40 @@ export class CalendarApiService {
     }));
   }
 
-  // 2. Fetch events in date range (supports multi-year range & robust pagination)
+  // 2. Fetch events in date range or via Incremental Sync (SyncToken)
   public static async listEvents(
     token: string,
     calendarId: string,
     timeMin?: string,
     timeMax?: string,
     query?: string,
-    calendarColor?: string
-  ): Promise<CalendarEvent[]> {
+    calendarColor?: string,
+    syncToken?: string
+  ): Promise<FetchEventsResult> {
     const encodedCalId = encodeURIComponent(calendarId);
     let allItems: any[] = [];
     let pageToken: string | undefined = undefined;
+    let nextSyncToken: string | undefined = undefined;
     let pageCount = 0;
     const MAX_PAGES = 50; // Google allows up to 2500 per page -> 50 pages = up to 125,000 events
+    const isIncremental = !!syncToken;
 
     do {
       try {
         const params = new URLSearchParams();
-        params.set('singleEvents', 'true');
-        params.set('orderBy', 'startTime');
-        params.set('maxResults', '2500'); // Maximum allowed by Google Calendar API (10x faster than 250)
-        if (timeMin) params.set('timeMin', timeMin);
-        if (timeMax) params.set('timeMax', timeMax);
+        params.set('maxResults', '2500'); // Maximum allowed by Google Calendar API
+
+        if (syncToken) {
+          // 差分同期: syncToken を指定（timeMin, timeMax, orderBy, singleEvents は API 仕様上併用不可）
+          params.set('syncToken', syncToken);
+        } else {
+          // 初回フル同期 / 期間指定
+          params.set('singleEvents', 'true');
+          params.set('orderBy', 'startTime');
+          if (timeMin) params.set('timeMin', timeMin);
+          if (timeMax) params.set('timeMax', timeMax);
+        }
+
         if (query) params.set('q', query);
         if (pageToken) params.set('pageToken', pageToken);
 
@@ -123,6 +141,9 @@ export class CalendarApiService {
         const items = data.items || [];
         allItems = allItems.concat(items);
         pageToken = data.nextPageToken;
+        if (data.nextSyncToken) {
+          nextSyncToken = data.nextSyncToken;
+        }
         pageCount++;
 
         // Brief pause between paginated calls to respect Google burst limits
@@ -130,20 +151,38 @@ export class CalendarApiService {
           await new Promise((r) => setTimeout(r, 60));
         }
       } catch (err: any) {
+        // 410 Gone: syncToken 失効時はフル同期に自動フォールバック
+        if (err?.status === 410 && syncToken) {
+          console.warn(`[CalendarApiService] syncToken expired for ${calendarId}, falling back to full sync.`);
+          return this.listEvents(token, calendarId, timeMin, timeMax, query, calendarColor, undefined);
+        }
+
         console.warn(`[CalendarApiService] Failed fetching page ${pageCount + 1} for ${calendarId}:`, err);
-        // Break out of pagination loop but preserve already accumulated allItems
+        if (allItems.length === 0) {
+          throw err;
+        }
         break;
       }
     } while (pageToken && pageCount < MAX_PAGES);
 
-    return allItems.map((item: any) => {
+    const deletedEventIds: string[] = [];
+    const validEvents: CalendarEvent[] = [];
+
+    for (const item of allItems) {
+      if (item.status === 'cancelled') {
+        deletedEventIds.push(item.id);
+        continue;
+      }
+
+      if (!item.start) continue;
+
       const colorId = item.colorId;
       const palette = colorId ? GOOGLE_EVENT_COLORS[colorId] : undefined;
       const bg = palette?.background || calendarColor || undefined;
       const isAllDayItem = !item.start?.dateTime && !!item.start?.date;
       const fg = palette?.foreground || (isAllDayItem ? '#ffffff' : undefined);
 
-      return {
+      validEvents.push({
         id: item.id,
         calendarId,
         summary: item.summary || '(タイトルなし)',
@@ -162,11 +201,18 @@ export class CalendarApiService {
         colorId,
         backgroundColor: bg,
         foregroundColor: fg,
-        isAllDay: !item.start?.dateTime && !!item.start?.date,
+        isAllDay: isAllDayItem,
         status: item.status,
         recurringEventId: item.recurringEventId,
-      };
-    });
+      });
+    }
+
+    return {
+      events: validEvents,
+      deletedEventIds,
+      nextSyncToken,
+      isIncremental,
+    };
   }
 
   // 3. Create event（双方向同期：ユーザー指定によりアプリの色はGoogleに反映しないため colorId は含めない）
