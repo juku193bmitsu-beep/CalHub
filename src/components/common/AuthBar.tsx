@@ -9,6 +9,7 @@ interface AuthBarProps {
 const STORAGE_KEY_AUTH_TOKEN = 'calhub_google_auth_token_v1';
 const STORAGE_KEY_AUTH_EXPIRES = 'calhub_google_auth_expires_v1';
 const STORAGE_KEY_BAR_DISMISSED = 'calhub_auth_bar_dismissed_v1';
+const STORAGE_KEY_LOGGED_IN_ONCE = 'calhub_has_logged_in_once';
 
 export const AuthBar: React.FC<AuthBarProps> = ({ onTokenChange }) => {
   const isConfigured = googleAuth.isConfigured();
@@ -62,6 +63,7 @@ export const AuthBar: React.FC<AuthBarProps> = ({ onTokenChange }) => {
       if (newToken && newExpiresAt) {
         localStorage.setItem(STORAGE_KEY_AUTH_TOKEN, newToken);
         localStorage.setItem(STORAGE_KEY_AUTH_EXPIRES, String(newExpiresAt));
+        localStorage.setItem(STORAGE_KEY_LOGGED_IN_ONCE, 'true');
       } else {
         localStorage.removeItem(STORAGE_KEY_AUTH_TOKEN);
         localStorage.removeItem(STORAGE_KEY_AUTH_EXPIRES);
@@ -71,7 +73,7 @@ export const AuthBar: React.FC<AuthBarProps> = ({ onTokenChange }) => {
     }
   }, []);
 
-  // Initialize GIS on mount
+  // Initialize GIS on mount and attempt silent auto-login if previously connected
   useEffect(() => {
     if (!isConfigured) return;
 
@@ -88,6 +90,28 @@ export const AuthBar: React.FC<AuthBarProps> = ({ onTokenChange }) => {
           setIsLoading(false);
         }
       );
+
+      // Attempt silent auto-login on app launch if previously connected
+      try {
+        const hasLoggedInOnce = localStorage.getItem(STORAGE_KEY_LOGGED_IN_ONCE) === 'true';
+        const savedToken = localStorage.getItem(STORAGE_KEY_AUTH_TOKEN);
+        const savedExp = localStorage.getItem(STORAGE_KEY_AUTH_EXPIRES);
+        const isCurrentValid = savedToken && savedExp && Number(savedExp) > Date.now();
+
+        if (hasLoggedInOnce && !isCurrentValid) {
+          googleAuth
+            .requestToken('none')
+            .then((newToken) => {
+              const exp = Date.now() + 3600 * 1000;
+              saveToken(newToken, exp);
+              setIsExpiringSoon(false);
+              onTokenChange(newToken);
+            })
+            .catch(() => {
+              // Expected if silent iframe login is blocked by third-party cookie restrictions
+            });
+        }
+      } catch {}
     }, 500);
 
     return () => clearTimeout(timer);

@@ -31,6 +31,7 @@ import {
   Info,
   ChevronDown,
   ChevronUp,
+  CloudUpload,
 } from 'lucide-react';
 import { TEXT_COLOR_PRESETS, BG_COLOR_PRESETS } from '../../services/colorUtils';
 
@@ -71,7 +72,15 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
     updateCalendarColor,
   } = useCalendar();
 
-  const { clearAllEvents, resetToMockEvents, refreshEvents, eventStats, isSyncingEvents } = useEvents();
+  const {
+    clearAllEvents,
+    resetToMockEvents,
+    refreshEvents,
+    eventStats,
+    isSyncingEvents,
+    pendingSyncCount,
+    processPendingSyncQueue,
+  } = useEvents();
 
   const [activeTab, setActiveTab] = useState<'calendars' | 'google' | 'arrows'>(initialTab);
   const [clientIdInput, setClientIdInput] = useState(googleAuth.getClientId());
@@ -119,7 +128,8 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
     try {
       // Force account selection to ensure fresh, uncorrupted access token
       const token = await googleAuth.requestToken('select_account');
-      setAuthToken(token);
+      const expiresAt = Date.now() + 3600 * 1000;
+      setAuthToken(token, expiresAt);
     } catch (err: any) {
       console.error('Google login failed:', err);
       setLoginError(err?.message || 'Googleログインに失敗しました。Client IDの設定を確認してください。');
@@ -132,6 +142,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
     setAuthToken(null);
     try {
       localStorage.removeItem('calhub_auth_bar_dismissed_v1');
+      localStorage.removeItem('calhub_has_logged_in_once');
     } catch {}
   };
 
@@ -615,6 +626,34 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                   </p>
                 </div>
               </div>
+
+              {/* Outbox Pending Changes Card */}
+              {pendingSyncCount > 0 && (
+                <div className="p-3.5 rounded-2xl border border-amber-200 dark:border-amber-800/80 bg-amber-50/80 dark:bg-amber-950/30 flex items-center justify-between text-xs text-amber-900 dark:text-amber-200 animate-in fade-in">
+                  <div className="flex items-center gap-2">
+                    <CloudUpload className="w-4 h-4 text-amber-600 dark:text-amber-400 shrink-0 animate-pulse" />
+                    <div>
+                      <span className="font-bold">
+                        Google未反映の予定: {pendingSyncCount} 件
+                      </span>
+                      <p className="text-[10px] text-amber-700/80 dark:text-amber-400/80">
+                        {authToken
+                          ? '通信または再接続時に自動送信されます'
+                          : 'Googleログインして接続すると自動送信されます'}
+                      </p>
+                    </div>
+                  </div>
+                  {authToken && (
+                    <button
+                      type="button"
+                      onClick={() => processPendingSyncQueue()}
+                      className="px-3 py-1.5 rounded-xl bg-amber-600 hover:bg-amber-700 text-white font-semibold text-xs transition active:scale-95 shadow-xs shrink-0 cursor-pointer"
+                    >
+                      今すぐ送信
+                    </button>
+                  )}
+                </div>
+              )}
 
               {loginError && (
                 <div className="p-3 rounded-xl bg-rose-50 dark:bg-rose-950/40 border border-rose-200 dark:border-rose-800 text-xs text-rose-600 dark:text-rose-400">

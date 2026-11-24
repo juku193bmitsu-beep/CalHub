@@ -40,7 +40,8 @@ interface CalendarContextType {
   theme: 'light' | 'dark';
   toggleTheme: () => void;
   authToken: string | null;
-  setAuthToken: (token: string | null) => void;
+  setAuthToken: (token: string | null, expiresAt?: number | null) => void;
+  tokenExpiresAt: number | null;
   isSyncing: boolean;
   refreshCalendars: () => Promise<void>;
   updateCalendarColor: (id: string, colors: { backgroundColor?: string; customTextColor?: string }) => void;
@@ -52,8 +53,19 @@ const STORAGE_KEY_PREFS = 'calhub_preferences_v1';
 const STORAGE_KEY_CALENDARS = 'calhub_cached_calendars_v1';
 const STORAGE_KEY_AUTH_TOKEN = 'calhub_google_auth_token_v1';
 const STORAGE_KEY_AUTH_EXPIRES = 'calhub_google_auth_expires_v1';
+const STORAGE_KEY_LOGGED_IN_ONCE = 'calhub_has_logged_in_once';
 
 export const CalendarProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+  const [tokenExpiresAt, setTokenExpiresAt] = useState<number | null>(() => {
+    try {
+      const savedExpires = localStorage.getItem(STORAGE_KEY_AUTH_EXPIRES);
+      if (savedExpires) return Number(savedExpires);
+    } catch {
+      // fallback
+    }
+    return null;
+  });
+
   const [authToken, setAuthTokenState] = useState<string | null>(() => {
     try {
       const savedToken = localStorage.getItem(STORAGE_KEY_AUTH_TOKEN);
@@ -67,17 +79,37 @@ export const CalendarProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     return null;
   });
 
-  const setAuthToken = useCallback((token: string | null) => {
+  const setAuthToken = useCallback((token: string | null, expiresAt?: number | null) => {
     setAuthTokenState(token);
     try {
       if (!token) {
         localStorage.removeItem(STORAGE_KEY_AUTH_TOKEN);
         localStorage.removeItem(STORAGE_KEY_AUTH_EXPIRES);
+        setTokenExpiresAt(null);
+      } else {
+        const exp = expiresAt || (Date.now() + 3600 * 1000);
+        localStorage.setItem(STORAGE_KEY_AUTH_TOKEN, token);
+        localStorage.setItem(STORAGE_KEY_AUTH_EXPIRES, String(exp));
+        localStorage.setItem(STORAGE_KEY_LOGGED_IN_ONCE, 'true');
+        setTokenExpiresAt(exp);
       }
     } catch {
       // ignore
     }
   }, []);
+
+  // Monitor token expiration periodically
+  useEffect(() => {
+    if (!authToken || !tokenExpiresAt) return;
+    const checkExpiry = () => {
+      if (Date.now() >= tokenExpiresAt) {
+        console.warn('Google auth token expired');
+        setAuthToken(null);
+      }
+    };
+    const interval = setInterval(checkExpiry, 15000);
+    return () => clearInterval(interval);
+  }, [authToken, tokenExpiresAt, setAuthToken]);
 
   const [isSyncing, setIsSyncing] = useState<boolean>(false);
 
@@ -399,6 +431,7 @@ export const CalendarProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         toggleTheme,
         authToken,
         setAuthToken,
+        tokenExpiresAt,
         isSyncing,
         refreshCalendars,
         updateCalendarColor,

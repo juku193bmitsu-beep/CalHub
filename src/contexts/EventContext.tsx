@@ -4,7 +4,16 @@ import { generateInitialMockEvents } from '../services/mockData';
 import { useCalendar } from './CalendarContext';
 import { CalendarApiService } from '../services/calendarApi';
 import { isEventOnDate, formatLocalDate, parseLocalDate } from '../services/dateUtils';
-import { loadEventsFromDb, saveEventsToDb, deleteEventFromDb, clearEventsDb } from '../services/storageDb';
+import {
+  loadEventsFromDb,
+  saveEventsToDb,
+  deleteEventFromDb,
+  clearEventsDb,
+  loadSyncQueue,
+  addToSyncQueue,
+  removeSyncQueueItem,
+  clearSyncQueue,
+} from '../services/storageDb';
 
 export interface EventStats {
   total: number;
@@ -19,6 +28,8 @@ interface EventContextType {
   isFetchingMonth: boolean;
   syncStatusMessage: string | null;
   eventStats: EventStats;
+  pendingSyncCount: number;
+  processPendingSyncQueue: () => Promise<void>;
   addEvent: (event: Omit<CalendarEvent, 'id'>) => Promise<CalendarEvent>;
   updateEvent: (id: string, updates: Partial<CalendarEvent>) => Promise<void>;
   deleteEvent: (id: string) => Promise<void>;
@@ -45,6 +56,15 @@ export const EventProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   const isSyncingRef = useRef<boolean>(false);
   // Store fetched timestamps: monthKey -> timestamp
   const fetchedMonthsRef = useRef<Map<string, number>>(new Map());
+  const [pendingSyncCount, setPendingSyncCount] = useState<number>(0);
+  const isProcessingQueueRef = useRef<boolean>(false);
+
+  // Load sync queue count on mount
+  useEffect(() => {
+    loadSyncQueue().then((q) => {
+      setPendingSyncCount(q.length);
+    });
+  }, []);
 
   // Load from localStorage or initialize with mock data
   const [events, setEvents] = useState<CalendarEvent[]>(() => {
@@ -123,6 +143,104 @@ export const EventProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       maxYear: maxYear === 0 ? null : maxYear,
     };
   }, [events]);
+
+  // Process Outbox / Sync Queue
+  const processPendingSyncQueue = useCallback(async () => {
+    if (!authToken || isProcessingQueueRef.current) return;
+    if (typeof navigator !== 'undefined' && !navigator.onLine) return;
+
+    try {
+      isProcessingQueueRef.current = true;
+      const queue = await loadSyncQueue();
+      if (queue.length === 0) {
+        setPendingSyncCount(0);
+        return;
+      }
+
+      let successCount = 0;
+
+      for (const item of queue) {
+        try {
+          const calId = item.calendarId || 'primary';
+
+          if (item.action === 'insert' && item.eventData) {
+            const apiCreated = await CalendarApiService.insertEvent(
+              authToken,
+              calId,
+              item.eventData as Omit<CalendarEvent, 'id'>
+            );
+
+            // Replace local temp ID with Google Event ID across events & db
+            setEvents((prev) => {
+              const updated = prev.map((ev) =>
+                ev.id === item.eventId ? { ...ev, id: apiCreated.id } : ev
+              );
+              saveEventsToDb(updated);
+              return updated;
+            });
+            deleteEventFromDb(item.eventId);
+            await removeSyncQueueItem(item.id);
+            successCount++;
+          } else if (item.action === 'update' && item.eventData) {
+            if (!item.eventId.startsWith('event-')) {
+              await CalendarApiService.patchEvent(
+                authToken,
+                calId,
+                item.eventId,
+                item.eventData
+              );
+            }
+            await removeSyncQueueItem(item.id);
+            successCount++;
+          } else if (item.action === 'delete') {
+            if (!item.eventId.startsWith('event-')) {
+              await CalendarApiService.deleteEvent(authToken, calId, item.eventId);
+            }
+            await removeSyncQueueItem(item.id);
+            successCount++;
+          }
+        } catch (err: any) {
+          if (err?.status === 401 || err?.isAuthError) {
+            setAuthToken(null);
+            setSyncStatusMessage('Google認証の期限が切れました。再接続すると未送信の予定が同期されます');
+            setTimeout(() => setSyncStatusMessage(null), 5000);
+            break;
+          }
+          console.warn(`Sync queue item ${item.id} retry postponed:`, err);
+        }
+      }
+
+      const remaining = await loadSyncQueue();
+      setPendingSyncCount(remaining.length);
+
+      if (successCount > 0) {
+        setSyncStatusMessage(`未送信の予定 ${successCount} 件をGoogleカレンダーに反映しました`);
+        setTimeout(() => setSyncStatusMessage(null), 4000);
+      }
+    } catch (e) {
+      console.error('Failed to process sync queue:', e);
+    } finally {
+      isProcessingQueueRef.current = false;
+    }
+  }, [authToken, setAuthToken]);
+
+  // Auto-process queue when token becomes active
+  useEffect(() => {
+    if (authToken) {
+      processPendingSyncQueue();
+    }
+  }, [authToken, processPendingSyncQueue]);
+
+  // Auto-process queue when device comes back online
+  useEffect(() => {
+    const handleOnline = () => {
+      if (authToken) {
+        processPendingSyncQueue();
+      }
+    };
+    window.addEventListener('online', handleOnline);
+    return () => window.removeEventListener('online', handleOnline);
+  }, [authToken, processPendingSyncQueue]);
 
   // On-demand fetch for viewed month window (cached for 10 minutes, skips when offline)
   // Ensures whenever the user views ANY past or future month, events load cleanly without excessive calls!
@@ -391,20 +509,24 @@ export const EventProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   // 1. Add Event
   const addEvent = async (newEventData: Omit<CalendarEvent, 'id'>): Promise<CalendarEvent> => {
     const tempId = `event-${Date.now()}-${Math.random().toString(36).substr(2, 4)}`;
+    const calId = newEventData.calendarId || 'primary';
     const created: CalendarEvent = {
       ...newEventData,
+      calendarId: calId,
       id: tempId,
     };
 
     // Optimistic UI update
     setEvents((prev) => [created, ...prev]);
 
-    // If Google token exists, sync to API
-    if (authToken && newEventData.calendarId) {
+    const isOnline = typeof navigator === 'undefined' || navigator.onLine;
+
+    // If Google token exists and online, attempt sync to API
+    if (authToken && isOnline) {
       try {
         const apiCreated = await CalendarApiService.insertEvent(
           authToken,
-          newEventData.calendarId,
+          calId,
           newEventData
         );
         // Replace temp ID with Google Event ID
@@ -412,9 +534,36 @@ export const EventProvider: React.FC<{ children: React.ReactNode }> = ({ childre
           prev.map((e) => (e.id === tempId ? { ...e, id: apiCreated.id } : e))
         );
         return { ...created, id: apiCreated.id };
-      } catch (err) {
-        console.error('Failed to sync inserted event to Google API:', err);
+      } catch (err: any) {
+        console.warn('Failed to insert directly to Google API, queuing in outbox:', err);
+        if (err?.status === 401 || err?.isAuthError) {
+          setAuthToken(null);
+        }
+        await addToSyncQueue({
+          action: 'insert',
+          calendarId: calId,
+          eventId: tempId,
+          eventData: newEventData,
+        });
+        setPendingSyncCount((prev) => prev + 1);
+        setSyncStatusMessage('端末に保存しました（Google再接続時に自動送信されます）');
+        setTimeout(() => setSyncStatusMessage(null), 4000);
       }
+    } else {
+      // Offline or unauthenticated -> Safe Outbox enqueue
+      await addToSyncQueue({
+        action: 'insert',
+        calendarId: calId,
+        eventId: tempId,
+        eventData: newEventData,
+      });
+      setPendingSyncCount((prev) => prev + 1);
+      if (!authToken) {
+        setSyncStatusMessage('端末に保存しました（Google接続時に自動送信されます）');
+      } else {
+        setSyncStatusMessage('オフライン保存しました（電波復帰時に自動送信されます）');
+      }
+      setTimeout(() => setSyncStatusMessage(null), 4000);
     }
 
     return created;
@@ -425,13 +574,33 @@ export const EventProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     const target = events.find((e) => e.id === id);
     setEvents((prev) => prev.map((e) => (e.id === id ? { ...e, ...updates } : e)));
 
-    if (authToken && target) {
+    const calId = updates.calendarId || target?.calendarId || 'primary';
+    const isOnline = typeof navigator === 'undefined' || navigator.onLine;
+
+    if (authToken && isOnline && target && !id.startsWith('event-')) {
       try {
-        const calId = updates.calendarId || target.calendarId;
         await CalendarApiService.patchEvent(authToken, calId, id, updates);
-      } catch (err) {
-        console.error('Failed to sync updated event to Google API:', err);
+      } catch (err: any) {
+        console.warn('Failed to patch directly to Google API, queuing in outbox:', err);
+        if (err?.status === 401 || err?.isAuthError) {
+          setAuthToken(null);
+        }
+        await addToSyncQueue({
+          action: 'update',
+          calendarId: calId,
+          eventId: id,
+          eventData: updates,
+        });
+        setPendingSyncCount((prev) => prev + 1);
       }
+    } else {
+      await addToSyncQueue({
+        action: 'update',
+        calendarId: calId,
+        eventId: id,
+        eventData: updates,
+      });
+      setPendingSyncCount((prev) => prev + 1);
     }
   };
 
@@ -441,12 +610,31 @@ export const EventProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     setEvents((prev) => prev.filter((e) => e.id !== id));
     deleteEventFromDb(id);
 
-    if (authToken && target) {
+    const calId = target?.calendarId || 'primary';
+    const isOnline = typeof navigator === 'undefined' || navigator.onLine;
+
+    if (authToken && isOnline && target && !id.startsWith('event-')) {
       try {
-        await CalendarApiService.deleteEvent(authToken, target.calendarId, id);
-      } catch (err) {
-        console.error('Failed to sync deleted event to Google API:', err);
+        await CalendarApiService.deleteEvent(authToken, calId, id);
+      } catch (err: any) {
+        console.warn('Failed to delete directly from Google API, queuing in outbox:', err);
+        if (err?.status === 401 || err?.isAuthError) {
+          setAuthToken(null);
+        }
+        await addToSyncQueue({
+          action: 'delete',
+          calendarId: calId,
+          eventId: id,
+        });
+        setPendingSyncCount((prev) => prev + 1);
       }
+    } else if (!id.startsWith('event-')) {
+      await addToSyncQueue({
+        action: 'delete',
+        calendarId: calId,
+        eventId: id,
+      });
+      setPendingSyncCount((prev) => prev + 1);
     }
   };
 
@@ -501,16 +689,12 @@ export const EventProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       })
     );
 
-    if (authToken && updatedEvent) {
-      try {
-        const target: CalendarEvent = updatedEvent;
-        await CalendarApiService.patchEvent(authToken, target.calendarId, id, {
-          start: target.start,
-          end: target.end,
-        });
-      } catch (err) {
-        console.error('Failed to sync moved event date to Google API:', err);
-      }
+    if (updatedEvent) {
+      const target: CalendarEvent = updatedEvent;
+      await updateEvent(id, {
+        start: target.start,
+        end: target.end,
+      });
     }
   };
 
@@ -531,12 +715,32 @@ export const EventProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       )
     );
 
-    if (authToken && target) {
+    const isOnline = typeof navigator === 'undefined' || navigator.onLine;
+
+    if (authToken && isOnline && target && !id.startsWith('event-')) {
       try {
         await CalendarApiService.moveEvent(authToken, target.calendarId, id, targetCalendarId);
-      } catch (err) {
-        console.error('Failed to move event across calendars via Google API:', err);
+      } catch (err: any) {
+        console.warn('Failed to move event across calendars via Google API, queuing:', err);
+        if (err?.status === 401 || err?.isAuthError) {
+          setAuthToken(null);
+        }
+        await addToSyncQueue({
+          action: 'update',
+          calendarId: targetCalendarId,
+          eventId: id,
+          eventData: { calendarId: targetCalendarId },
+        });
+        setPendingSyncCount((prev) => prev + 1);
       }
+    } else {
+      await addToSyncQueue({
+        action: 'update',
+        calendarId: targetCalendarId,
+        eventId: id,
+        eventData: { calendarId: targetCalendarId },
+      });
+      setPendingSyncCount((prev) => prev + 1);
     }
   };
 
@@ -563,6 +767,8 @@ export const EventProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   const clearAllEvents = () => {
     setEvents([]);
     clearEventsDb();
+    clearSyncQueue();
+    setPendingSyncCount(0);
     try {
       localStorage.removeItem(STORAGE_KEY_EVENTS);
       localStorage.removeItem(STORAGE_KEY_HAS_SYNCED);
@@ -584,6 +790,8 @@ export const EventProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         isFetchingMonth,
         syncStatusMessage,
         eventStats,
+        pendingSyncCount,
+        processPendingSyncQueue,
         addEvent,
         updateEvent,
         deleteEvent,

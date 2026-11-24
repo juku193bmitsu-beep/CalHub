@@ -1,4 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
+import { useCalendar } from '../../contexts/CalendarContext';
+import { useEvents } from '../../contexts/EventContext';
 import {
   ChevronLeft,
   ChevronRight,
@@ -9,6 +11,7 @@ import {
   Columns3,
   AlignJustify,
   Grid3X3,
+  CloudUpload,
 } from 'lucide-react';
 import { CalendarViewType } from '../../types/view';
 
@@ -35,6 +38,8 @@ export const Header: React.FC<HeaderProps> = ({
   onOpenArrowSettings,
   onOpenYearMonthPicker,
 }) => {
+  const { authToken } = useCalendar();
+  const { pendingSyncCount, processPendingSyncQueue } = useEvents();
   const [isViewMenuOpen, setIsViewMenuOpen] = useState(false);
   const viewMenuRef = useRef<HTMLDivElement | null>(null);
 
@@ -167,6 +172,28 @@ export const Header: React.FC<HeaderProps> = ({
               ))}
             </div>
           </div>
+
+          {/* Outbox / Sync Queue Indicator */}
+          {pendingSyncCount > 0 && (
+            <button
+              onClick={() => {
+                if (authToken) {
+                  processPendingSyncQueue();
+                } else {
+                  onOpenArrowSettings();
+                }
+              }}
+              className="flex items-center gap-1 px-2 py-1 rounded-xl bg-amber-50 hover:bg-amber-100 dark:bg-amber-950/60 dark:hover:bg-amber-900/60 text-amber-700 dark:text-amber-300 border border-amber-200 dark:border-amber-800 text-[11px] font-bold transition active:scale-95 shadow-2xs"
+              title={
+                authToken
+                  ? `未送信の予定が ${pendingSyncCount} 件あります（タップしてGoogleへ送信）`
+                  : `Google未接続のため未送信 ${pendingSyncCount} 件（タップして設定を開く）`
+              }
+            >
+              <CloudUpload className="w-3.5 h-3.5 animate-pulse text-amber-600 dark:text-amber-400" />
+              <span>未送信 {pendingSyncCount}</span>
+            </button>
+          )}
 
           {/* Quick Action icons (Search & Settings) */}
           <button
